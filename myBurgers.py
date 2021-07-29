@@ -113,8 +113,7 @@ class PINN(nn.Module):
         self.u_b = torch.from_numpy(ub).float().to(device)
         self.l_b = torch.from_numpy(lb).float().to(device)
        
-        self.x_u = X_u[:,0:1]
-        self.t_u = X_u[:,1:2]
+        self.xt_u = X_u
         
         self.xt_f = X_f
         
@@ -224,7 +223,7 @@ class PINN(nn.Module):
     def closure(self):
         
         optimizer.zero_grad()
-        loss = self.loss(self.x_u, self.u, self.xt_f)
+        loss = self.loss(self.xt_u, self.u, self.xt_f)
         loss.backward()                                                             # To get gradients
                 
         self.iter += 1
@@ -250,7 +249,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
     
-    data = scipy.io.loadmat('Data/burgers_shock.mat')
+    data = scipy.io.loadmat('Data/burgers_shock_mu_01_pi.mat')
     
     # All these are numpy.ndarray
     # t.shape = (100,1), x.shape = (256,1), Exact.shape = (100,256)
@@ -259,7 +258,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     x = data['x']
     t = data['t']
-    Exact = np.real(data['usol']).T
+    usol = data['usol']
     
     # X.shape = (100,256), Y.shape = (100, 256)
     # X has x repeated 100 times and T has t repeated 256 times
@@ -269,25 +268,31 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # Horizontally stack them, X_test.shape = (25600,2) = u_star.shape
 
     X_test = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
-    u_test = Exact.flatten()[:,None]              # TODO check whether fortran-style flatten (column-major) to be used or normal 
+    u_true = usol.flatten('F')[:,None] 
+    # Whether fortran-style flatten (column-major) to be used or normal: Transposing and .flatten('F') are the same thing
 
     # Domain bounds
     # numpy.ndarray.min(axis) returns the min along a given axes
     # lb = [-1,0], ub = [1,0.99]
 
-    lb = X_test.min(0)
-    ub = X_test.max(0)    
+    lb = X_test[0]  # [-1. 0.]
+    ub = X_test[-1] # [1.  0.99]   
         
     # Python splicing a:b does not include b
     # xx1 has all values of x at time t=0, uu1 has corresponding u values
     # xx2 has min x at all t, xx3 has max x at all t
 
-    xx1 = np.hstack((X[0:1,:].T, T[0:1,:].T))
-    uu1 = Exact[0:1,:].T
-    xx2 = np.hstack((X[:,0:1], T[:,0:1]))
-    uu2 = Exact[:,0:1]
-    xx3 = np.hstack((X[:,-1:], T[:,-1:]))
-    uu3 = Exact[:,-1:]
+    #Initial Condition -1 =< x =<1 and t = 0  
+    leftedge_x = np.hstack((X[0,:][:,None], T[0,:][:,None])) #L1
+    leftedge_u = usol[:,0][:,None]
+
+    #Boundary Condition x = -1 and 0 =< t =<1
+    bottomedge_x = np.hstack((X[:,0][:,None], T[:,0][:,None])) #L2
+    bottomedge_u = usol[-1,:][:,None]
+
+    #Boundary Condition x = 1 and 0 =< t =<1
+    topedge_x = np.hstack((X[:,-1][:,None], T[:,0][:,None])) #L3
+    topedge_u = usol[0,:][:,None]
 
     # xx1 forms initial condition, xx2 & xx3 form boundary conditions
     # vstack for vertically stacking (_,2) ndarrays
@@ -297,8 +302,8 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # Gives an samples*n output
     # X_f_train contains all collocation as well as ALL boundary and initial points (without sampling)
     
-    XT_u_basecases = np.vstack([xx1, xx2, xx3])
-    u_basecases = np.vstack([uu1, uu2, uu3])
+    XT_u_basecases = np.vstack([leftedge_x, bottomedge_x, topedge_x])
+    u_basecases = np.vstack([leftedge_u, bottomedge_u, topedge_u])
 
     # idx tells which indices to pick finally by randomly sampling without replacement
 
@@ -309,7 +314,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # TODO correct this in initial paper, X_f_train should not contain X_u_train, or it should contain them properly sampled
 
     X_f_train = lb + (ub-lb)*lhs(2, N_f)
-    X_f_train = np.vstack((X_f_train, XT_u_basecases))                  # TODO Don't know why this should be here
+    X_f_train = np.vstack((X_f_train, XT_u_train))                  # TODO Don't know why this should be here
 
     # Convert all to tensors
 
@@ -318,11 +323,11 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     X_f_train = torch.from_numpy(X_f_train).float().to(device)
 
     X_test_tensor = torch.from_numpy(X_test).float().to(device)
-    u_test_tensor = torch.from_numpy(u_test).float().to(device)
+    u = torch.from_numpy(u_true).float().to(device)
     f_hat = torch.zeros(X_f_train.shape[0],1).to(device)
         
     model = PINN(XT_u_train, u_train, X_f_train, layers, lb, ub, nu)
-    model.fill_meta(X_test_tensor, u_test_tensor, f_hat)
+    model.fill_meta(X_test_tensor, u, f_hat)
     model.to(device)
 
     print(model)
@@ -351,12 +356,12 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
 
     ''' Solution Plot '''
-    x_plot = data['x']
-    t_plot = data['t']
-    usol_plot = data['usol']
-    X_plot, T_plot = np.meshgrid(x_plot, t_plot)
+    # x_plot = data['x']
+    # t_plot = data['t']
+    # usol_plot = data['usol']
+    # X_plot, T_plot = np.meshgrid(x_plot, t_plot)
     
-    solutionplot(u_pred, XT_u_train.cpu().detach().numpy(), u_train.cpu().detach().numpy(), X_plot, T_plot, x_plot, t_plot, usol_plot)
+    solutionplot(u_pred, XT_u_train.cpu().detach().numpy(), u_train.cpu().detach().numpy(), X, T, x, t, usol)
 
 
 if __name__ == "__main__": 
