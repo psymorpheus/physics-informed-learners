@@ -335,9 +335,17 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # L-BFGS Optimizer
 
     global optimizer
+    # optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
+    #                             max_iter = 250, 
+    #                             max_eval = None, 
+    #                             tolerance_grad = 1e-05, 
+    #                             tolerance_change = 1e-09, 
+    #                             history_size = 100, 
+    #                             line_search_fn = 'strong_wolfe')
+
+    # Gets from 37% error to 8% error
     optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
-                                max_iter = 250, 
-                                max_eval = None, 
+                                max_iter = 1000,
                                 tolerance_grad = 1e-05, 
                                 tolerance_change = 1e-09, 
                                 history_size = 100, 
