@@ -1,5 +1,4 @@
 import torch
-from torch._C import unify_type_list
 import torch.autograd as autograd         # computation graph TODO see course about this
 from torch import Tensor                  # tensor node in the computation graph
 import torch.nn as nn                     # neural networks
@@ -343,11 +342,20 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     #                             history_size = 100, 
     #                             line_search_fn = 'strong_wolfe')
 
+    # self.optimizer = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
+    #                                                             method = 'L-BFGS-B', 
+    #                                                             options = {'maxiter': 50000,
+    #                                                                        'maxfun': 50000,
+    #                                                                        'maxcor': 50,
+    #                                                                        'maxls': 50,
+    #                                                                        'ftol' : 1.0 * np.finfo(float).eps})
+
     # Gets from 37% error to 8% error
+    # For 0.02 error
     optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
-                                max_iter = 1000,
-                                tolerance_grad = 1e-05, 
-                                tolerance_change = 1e-09, 
+                                max_iter = 50000,
+                                tolerance_grad = 1.0 * np.finfo(float).eps, 
+                                tolerance_change = 1.0 * np.finfo(float).eps, 
                                 history_size = 100, 
                                 line_search_fn = 'strong_wolfe')
     
