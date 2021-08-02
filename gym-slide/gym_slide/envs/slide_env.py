@@ -43,23 +43,29 @@ class SlideEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
     def __init__(self, goal_velocity=0):
-        self.min_position = -1.2
-        self.max_position = 0.6
-        self.max_speed = 0.07
-        self.goal_position = 0.5
+        self.min_position = -2.0
+        self.max_position = 2.0
+        self.max_speed = 2
+        self.goal_position = 1.5
         self.goal_velocity = goal_velocity
 
-        self.force = 0.001 # Some function of time decided later
-        self.gravity = 0.002
+        # self.force = 0.001 # Some function of time decided later
+        self.gravity = -9.8
+        self.mass = 20.0 # mass in kg
 
         self.low = np.array([self.min_position, -self.max_speed], dtype=np.float32)
         self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
 
         self.viewer = None
 
-        self.action_space = spaces.Discrete(3)
+        # self.action_space = spaces.Box( np.array([-1,0,0]), np.array([+1,+1,+1]))
+        self.min_action = -1000.0
+        self.max_action = 1000.0
+        self.action_space = spaces.Box( np.array([self.min_action, self.min_action]), np.array([self.max_action, self.max_action]))     # Only force is given as input, ForceX, ForceY
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
+        self.time_step = 0.01       # Time between each episode (in seconds)
+        self.mu = 0.5               # Coefficient of friction
         self.seed()
 
     def seed(self, seed=None):
@@ -73,13 +79,33 @@ class SlideEnv(gym.Env):
         )
 
         position, velocity = self.state
+        force = {'x':min(max(action[0], self.min_action), self.max_action), 'y':min(max(action[1], self.min_action), self.max_action)}
+
+        theta = self._theta(position)
+        force_along = force['x'] * math.cos(theta) + force['y'] * math.sin(theta)
+        force_perp = -1 * force['x'] * math.sin(theta) + force['y'] * math.cos(theta)     # Out of ground positive
+        normal = force_perp - self.mass * self.gravity * math.cos(theta)
+
+        force_along += math.sin(theta) * (self.gravity) * self.mass
+
+        # To take care of friction
+        if velocity>0:
+          force_along -= self.mu * normal
+        elif velocity<0:
+          force_along += self.mu * normal
+        else:
+          if abs(force_along)<=abs(self.mu * normal):
+            force_along = 0
+          else:
+            if force_along>0: force_along -= abs(self.mu * normal)
+            else: force_along += abs(self.mu * normal)
 
         # Path dependent (kinematics)
-        velocity += (action - 1) * self.force + (2*position) * (-self.gravity)      # Component of gravity parallel to surface, v=u+at
+        velocity += (force_along/self.mass) * self.time_step     # Component of gravity parallel to surface, v=u+at
         velocity = np.clip(velocity, -self.max_speed, self.max_speed)     # Bounds it within this interval
         
         # Time has been taken as 1
-        position += velocity
+        position += velocity * self.time_step * math.cos(theta)
         position = np.clip(position, self.min_position, self.max_position)
 
         # Can't go beyond edge
@@ -87,7 +113,10 @@ class SlideEnv(gym.Env):
             velocity = 0
 
         done = bool(position >= self.goal_position and velocity >= self.goal_velocity)
-        reward = -1.0
+        if normal<0:
+          reward = -1000.0
+        else:
+          reward = -1.0
 
         self.state = (position, velocity)
         return np.array(self.state), reward, done, {}
@@ -101,6 +130,9 @@ class SlideEnv(gym.Env):
         # Path dependent
         # return np.sin(3 * xs) * 0.45 + 0.55
         return (xs*xs) * 0.45 + 0.2
+
+    def _theta(self, xs):
+        return math.atan(2 * xs * 0.45)
 
     def render(self, mode="human"):
         screen_width = 600
@@ -161,7 +193,7 @@ class SlideEnv(gym.Env):
             (pos - self.min_position) * scale, self._height(pos) * scale
         )
         # Path dependent (diff of y wrt x)
-        self.cartrans.set_rotation(2*pos*0.45)
+        self.cartrans.set_rotation(self._theta(pos))
 
         return self.viewer.render(return_rgb_array=mode == "rgb_array")
 
