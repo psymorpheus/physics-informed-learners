@@ -160,7 +160,7 @@ class PINN(nn.Module):
         
         # To get from numpy to torch tensor
         if torch.is_tensor(x) != True:         
-            x = torch.from_numpy(x)                
+            x = torch.from_numpy(x)             
                       
         # Preprocessing input - sclaed from 0 to 1
         x = (x - self.l_b)/(self.u_b - self.l_b)
