@@ -77,6 +77,9 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
 
         done = False
+        if np.max(obs["obj_vel"]) < 1e-4:
+            done = True
+
         info = {
             "is_success": self._is_success(obs["achieved_goal"], self.goal),
         }

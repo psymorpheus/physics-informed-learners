@@ -26,6 +26,7 @@ class FetchEnv(robot_env.RobotEnv):
         distance_threshold,
         initial_qpos,
         reward_type,
+        obj_init
     ):
         """Initializes a new Fetch environment.
 
@@ -52,6 +53,7 @@ class FetchEnv(robot_env.RobotEnv):
         self.target_range = target_range
         self.distance_threshold = distance_threshold
         self.reward_type = reward_type
+        self.obj_init = obj_init
 
         super(FetchEnv, self).__init__(
             model_path=model_path,
@@ -81,6 +83,7 @@ class FetchEnv(robot_env.RobotEnv):
             self.sim.forward()
 
     def _set_action(self, action):
+        return
         assert action.shape == (4,)
         action = (
             action.copy()
@@ -119,6 +122,7 @@ class FetchEnv(robot_env.RobotEnv):
             object_velr = self.sim.data.get_site_xvelr("object0") * dt
             # gripper state
             object_rel_pos = object_pos - grip_pos
+            # Changed it from relative to absolute velocity
             object_velp -= grip_velp
         else:
             object_pos = (
@@ -151,10 +155,13 @@ class FetchEnv(robot_env.RobotEnv):
             "observation": obs.copy(),
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": self.goal.copy(),
+            "obj_pos": object_pos,
+            "obj_vel": object_velp,
         }
 
     def _viewer_setup(self):
         body_id = self.sim.model.body_name2id("robot0:gripper_link")
+        # body_id = self.sim.model.body_name2id("object0")
         lookat = self.sim.data.body_xpos[body_id]
         for idx, value in enumerate(lookat):
             self.viewer.cam.lookat[idx] = value
@@ -164,6 +171,7 @@ class FetchEnv(robot_env.RobotEnv):
 
     def _render_callback(self):
         # Visualize target.
+        return
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()
         site_id = self.sim.model.site_name2id("target0")
         self.sim.model.site_pos[site_id] = self.goal - sites_offset[0]
@@ -174,15 +182,21 @@ class FetchEnv(robot_env.RobotEnv):
 
         # Randomize start position of object.
         if self.has_object:
-            object_xpos = self.initial_gripper_xpos[:2]
-            while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
-                object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
-                    -self.obj_range, self.obj_range, size=2
-                )
+            # object_xpos = self.initial_gripper_xpos[:2]
+            # while np.linalg.norm(object_xpos - self.initial_gripper_xpos[:2]) < 0.1:
+            #     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
+            #         -self.obj_range, self.obj_range, size=2
+            #     )
+            object_xpos = self.obj_init[:2]
+            object_velp = self.obj_init[3:]
             object_qpos = self.sim.data.get_joint_qpos("object0:joint")
+            object_qvel = self.sim.data.get_joint_qvel("object0:joint")
             assert object_qpos.shape == (7,)
+            assert object_qvel.shape == (6,)
             object_qpos[:2] = object_xpos
+            object_qvel[:3] = object_velp
             self.sim.data.set_joint_qpos("object0:joint", object_qpos)
+            self.sim.data.set_joint_qvel("object0:joint", object_qvel)
 
         self.sim.forward()
         return True
