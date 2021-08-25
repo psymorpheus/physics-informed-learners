@@ -13,10 +13,13 @@ class MujocoSlideEnv(fetch_env.FetchEnv, utils.EzPickle):
     def __init__(self, obj_init, reward_type="sparse"):
         # First 3 tell coordinates of object and last 3 tell velocity
         assert obj_init.shape == (6,)
+        # initial_qpos = {
+        #     "robot0:slide0": 0.05,
+        #     "robot0:slide1": 0.48,
+        #     "robot0:slide2": 0.0,
+        #     "object0:joint": [1.7, 1.1, 0.41, 1.0, 0.0, 0.0, 0.0],
+        # }
         initial_qpos = {
-            "robot0:slide0": 0.05,
-            "robot0:slide1": 0.48,
-            "robot0:slide2": 0.0,
             "object0:joint": [1.7, 1.1, 0.41, 1.0, 0.0, 0.0, 0.0],
         }
         fetch_env.FetchEnv.__init__(

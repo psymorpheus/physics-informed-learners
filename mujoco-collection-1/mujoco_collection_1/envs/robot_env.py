@@ -41,7 +41,7 @@ class RobotEnv(gym.GoalEnv):
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
 
-        self.goal = self._sample_goal()
+        # self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
         self.observation_space = spaces.Dict(
@@ -81,9 +81,11 @@ class RobotEnv(gym.GoalEnv):
             done = True
 
         info = {
-            "is_success": self._is_success(obs["achieved_goal"], self.goal),
+            # "is_success": self._is_success(obs["achieved_goal"], self.goal),
+            "is_success": 0.0,
         }
-        reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
+        # reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
+        reward = 0.0
         return obs, reward, done, info
 
     def reset(self):
@@ -96,7 +98,7 @@ class RobotEnv(gym.GoalEnv):
         did_reset_sim = False
         while not did_reset_sim:
             did_reset_sim = self._reset_sim()
-        self.goal = self._sample_goal().copy()
+        # self.goal = self._sample_goal().copy()
         obs = self._get_obs()
         return obs
 
