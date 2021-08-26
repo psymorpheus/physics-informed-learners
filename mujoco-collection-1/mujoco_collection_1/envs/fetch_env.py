@@ -123,8 +123,8 @@ class FetchEnv(robot_env.RobotEnv):
             # velocities
             # object_velp = self.sim.data.get_site_xvelp("object0") * dt
             # object_velr = self.sim.data.get_site_xvelr("object0") * dt
-            object_velp = self.sim.data.get_site_xvelp("object0")
-            object_velr = self.sim.data.get_site_xvelr("object0")
+            object_velp = self.sim.data.get_site_xvelp("object0") * dt
+            object_velr = self.sim.data.get_site_xvelr("object0") * dt
             # gripper state
             object_rel_pos = object_pos - grip_pos
             # Changed it from relative to absolute velocity
