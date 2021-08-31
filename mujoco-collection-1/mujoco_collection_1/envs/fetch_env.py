@@ -192,13 +192,13 @@ class FetchEnv(robot_env.RobotEnv):
             #     object_xpos = self.initial_gripper_xpos[:2] + self.np_random.uniform(
             #         -self.obj_range, self.obj_range, size=2
             #     )
-            object_xpos = self.obj_init[:2]
+            object_xpos = self.obj_init[:3]
             object_velp = self.obj_init[3:]
             object_qpos = self.sim.data.get_joint_qpos("object0:joint")
             object_qvel = self.sim.data.get_joint_qvel("object0:joint")
             assert object_qpos.shape == (7,)
             assert object_qvel.shape == (6,)
-            object_qpos[:2] = object_xpos
+            object_qpos[:3] = object_xpos
             object_qvel[:3] = object_velp
 
             # Stopping rotations
