@@ -13,7 +13,7 @@
 			<site name="target0" pos="0 0 0.5" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"></site>
 		</body>
 
-		<!-- <include file="robot.xml"></include> -->
+		<include file="robot.xml"></include>
 		
 		<body name="table0" pos="1.32441906 0.75018422 0.2">
 			<geom size="0.625 0.45 0.2" type="box" condim="3" name="table0" material="table_mat" mass="2000" friction="0.1 0.005 0.0001"></geom>

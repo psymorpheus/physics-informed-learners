@@ -19,7 +19,7 @@ DEFAULT_SIZE = 500
 
 
 class RobotEnv(gym.GoalEnv):
-    def __init__(self, model_path, initial_qpos, n_actions, n_substeps):
+    def __init__(self, model_path, initial_qpos, n_actions, n_substeps, obj_init):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -38,10 +38,10 @@ class RobotEnv(gym.GoalEnv):
         }
 
         self.seed()
-        self._env_setup(initial_qpos=initial_qpos)
+        self._env_setup(initial_qpos=initial_qpos, obj_init=obj_init)
         self.initial_state = copy.deepcopy(self.sim.get_state())
 
-        # self.goal = self._sample_goal()
+        self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype="float32")
         self.observation_space = spaces.Dict(
@@ -77,15 +77,10 @@ class RobotEnv(gym.GoalEnv):
         obs = self._get_obs()
 
         done = False
-        if np.max(np.abs(obs["obj_vel"])) < 1e-4:
-            done = True
-
         info = {
-            # "is_success": self._is_success(obs["achieved_goal"], self.goal),
-            "is_success": 0.0,
+            "is_success": self._is_success(obs["achieved_goal"], self.goal),
         }
-        # reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
-        reward = 0.0
+        reward = self.compute_reward(obs["achieved_goal"], self.goal, info)
         return obs, reward, done, info
 
     def reset(self):
@@ -98,7 +93,7 @@ class RobotEnv(gym.GoalEnv):
         did_reset_sim = False
         while not did_reset_sim:
             did_reset_sim = self._reset_sim()
-        # self.goal = self._sample_goal().copy()
+        self.goal = self._sample_goal().copy()
         obs = self._get_obs()
         return obs
 
@@ -159,7 +154,7 @@ class RobotEnv(gym.GoalEnv):
         """Samples a new goal and returns it."""
         raise NotImplementedError()
 
-    def _env_setup(self, initial_qpos):
+    def _env_setup(self, initial_qpos, obj_init):
         """Initial configuration of the environment. Can be used to configure initial state
         and extract information from the simulation.
         """

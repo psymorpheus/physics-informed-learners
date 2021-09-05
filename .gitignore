@@ -15,3 +15,5 @@ node_modules
 
 data-*.csv
 data-*.mat
+__pycache__/
+.DS_store
