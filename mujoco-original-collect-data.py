@@ -3,6 +3,7 @@ import mujoco_py
 import numpy as np
 import scipy.io as sc
 import time
+import glfw
 
 env = gym.make('FetchSlide-v1')
 env.reset()
@@ -29,9 +30,14 @@ while (iter<200):
     newrow = np.array([np.hstack([[iter],obj_pos,obj_vel,[obj_vel[1]/obj_vel[0]]])])
     data = np.vstack([data, newrow])
 
+# Needed so that windows closes without becoming unresponsive
+env.close()
+glfw.terminate()
+
 filename = "data-" + time.strftime("%Y%m%d-%H%M%S")
-toSave = input('Save file? [Y/n]')
+toSave = input('Save file?[Y/n] ')
 if toSave[0].lower() == 'y':
     np.savetxt(filename + ".csv", data, delimiter=",")
     sc.savemat(filename + ".mat", {'data':data})
+
 env.close()
