@@ -1,7 +1,0 @@
-README.md
-setup.py
-mujoco_collection_1.egg-info/PKG-INFO
-mujoco_collection_1.egg-info/SOURCES.txt
-mujoco_collection_1.egg-info/dependency_links.txt
-mujoco_collection_1.egg-info/requires.txt
-mujoco_collection_1.egg-info/top_level.txt
