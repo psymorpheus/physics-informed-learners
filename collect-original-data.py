@@ -30,6 +30,8 @@ while (iter<200):
     data = np.vstack([data, newrow])
 
 filename = "data-" + time.strftime("%Y%m%d-%H%M%S")
-np.savetxt(filename + ".csv", data, delimiter=",")
-sc.savemat(filename + ".mat", {'data':data})
+toSave = input('Save file? [Y/n]')
+if toSave[0].lower() == 'y':
+    np.savetxt(filename + ".csv", data, delimiter=",")
+    sc.savemat(filename + ".mat", {'data':data})
 env.close()
