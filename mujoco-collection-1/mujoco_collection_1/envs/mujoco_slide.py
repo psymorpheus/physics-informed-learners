@@ -17,7 +17,7 @@ class MujocoSlideEnv(fetch_env.FetchEnv, utils.EzPickle):
             "robot0:slide0": 0.05,
             "robot0:slide1": 0.48,
             "robot0:slide2": 0.0,
-            "object0:joint": [1.7, 1.1, 0.41, 1.0, 0.0, 0.0, 0.0],
+            "object0:joint": [5.0, 5.0, 0.41, 1.0, 0.0, 0.0, 0.0],
         }
         # initial_qpos = {
         #     "object0:joint": [1.7, 1.1, 0.41, 1.0, 0.0, 0.0, 0.0],
