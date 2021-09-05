@@ -6,7 +6,6 @@ import time
 import glfw
 
 env = gym.make('FetchSlide-v1')
-env.reset()
 iter = 0
 
 defStep = np.array([-1,-1,1,0],dtype=np.float32)
