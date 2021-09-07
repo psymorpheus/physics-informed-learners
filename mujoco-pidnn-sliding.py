@@ -191,16 +191,17 @@ class PINN(nn.Module):
         u = self.forward(g)
         # TODO see autograd
         x_v_t = autograd.grad(u,g,torch.ones([x_to_train_f.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]                 
-        x_vv_tt = autograd.grad(x_v_t,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
+        x_vv_tt = autograd.grad(x_v_t,g,torch.ones(x_to_train_f.shape).to(device), retain_graph=True, create_graph=True)[0]
+        x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
                                                             
         x_v = x_v_t[:,[0]]
         x_t = x_v_t[:,[1]]
         x_tt = x_vv_tt[:,[1]]
+        x_ttt = x_vvv_ttt[:,[1]]
 
-        return 0
         # TODO change later
 
-        f = u_t + (self.forward(g))*(u_x) - (self.mu)*u_xx
+        f = x_ttt
         loss_f = self.loss_function(f,self.f_hat)
                 
         return loss_f
@@ -209,7 +210,7 @@ class PINN(nn.Module):
 
         loss_u = self.loss_BC(x,y)
         if mcc.isPIDNN:
-            loss_f = 0 #self.loss_PDE(x_to_train_f)
+            loss_f = self.loss_PDE(x_to_train_f)
         else:
             loss_f = 0
         loss_val = loss_u + loss_f
@@ -363,7 +364,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     # Gets from 37% error to 8% error
     # For 0.02 error
-    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
+    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.001, 
                                 max_iter = 50000,
                                 tolerance_grad = 1.0 * np.finfo(float).eps, 
                                 tolerance_change = 1.0 * np.finfo(float).eps, 
