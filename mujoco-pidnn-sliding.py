@@ -1,4 +1,3 @@
-from numpy.core.fromnumeric import shape
 import torch
 import torch.autograd as autograd         # computation graph TODO see course about this
 from torch import Tensor                  # tensor node in the computation graph
@@ -24,7 +23,6 @@ torch.manual_seed(1234)
 np.random.seed(1234)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
 print("Running this on", device)
 if device == 'cuda': 
     print(torch.cuda.get_device_name())
@@ -206,7 +204,7 @@ class PINN(nn.Module):
     def loss(self,x,y,x_to_train_f):
 
         loss_u = self.loss_BC(x,y)
-        loss_f = self.loss_PDE(x_to_train_f)
+        loss_f = 0 #self.loss_PDE(x_to_train_f)
         loss_val = loss_u + loss_f
         
         return loss_val
@@ -224,7 +222,7 @@ class PINN(nn.Module):
         self.iter += 1
         if self.iter % 100 == 0:
             error_vec, _ = self.test()
-            print(loss,error_vec)
+            print(loss, error_vec)
 
         return loss
     
@@ -233,7 +231,7 @@ class PINN(nn.Module):
         u_pred = self.forward(self.X_test_tensor)
         error_vec = torch.linalg.norm((self.u_test-u_pred),2)/torch.linalg.norm(self.u_test,2)        # Relative L2 Norm of the error (Vector)
         u_pred = u_pred.cpu().detach().numpy()
-        u_pred = np.reshape(u_pred,(256,100),order='F')
+        u_pred = np.reshape(u_pred,(mcc.vx_range.shape[0],mcc.t_range.shape[0]),order='F')
         return error_vec, u_pred
 
 def main_loop(N_u, N_f, num_layers, num_neurons):
@@ -301,13 +299,13 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # Gives an samples*n output
     # X_f_train contains all collocation as well as ALL boundary and initial points (without sampling)
     
-    VT_x_basecases = np.vstack([leftedge_vt, topedge_vt])
+    VT_u_basecases = np.vstack([leftedge_vt, topedge_vt])
     x_basecases = np.vstack([leftedge_x, topedge_x])
 
     # idx tells which indices to pick finally by randomly sampling without replacement
 
-    idx = np.random.choice(VT_x_basecases.shape[0], N_u, replace=False)
-    VT_u_train = VT_x_basecases[idx, :]
+    idx = np.random.choice(VT_u_basecases.shape[0], N_u, replace=False)
+    VT_u_train = VT_u_basecases[idx, :]
     u_train = x_basecases[idx, :]
 
     # TODO correct this in initial paper, X_f_train should not contain X_u_train, or it should contain them properly sampled
@@ -319,11 +317,11 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # Convert all to tensors
 
     VT_u_train = torch.from_numpy(VT_u_train).float().to(device)
-    x_train = torch.from_numpy(u_train).float().to(device)
+    u_train = torch.from_numpy(u_train).float().to(device)
     VT_f_train = torch.from_numpy(VT_f_train).float().to(device)
 
     VT_test_tensor = torch.from_numpy(VT_test).float().to(device)
-    u = x_train
+    u = torch.from_numpy(x_true).float().to(device)
     f_hat = torch.zeros(VT_f_train.shape[0],1).to(device)
         
     model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub, mu)
@@ -382,4 +380,4 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
 if __name__ == "__main__": 
     # main_loop(20, 2000, 8, 40)
-    main_loop(100, 10000, 8, 20)
+    main_loop(200, 10000, 8, 20)

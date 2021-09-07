@@ -26,7 +26,8 @@ torch.manual_seed(1234)
 np.random.seed(1234)
 
 # Device configuration
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 print("Running this on", device)
 
