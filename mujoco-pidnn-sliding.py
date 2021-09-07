@@ -192,16 +192,17 @@ class PINN(nn.Module):
         # TODO see autograd
         x_v_t = autograd.grad(u,g,torch.ones([x_to_train_f.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]                 
         x_vv_tt = autograd.grad(x_v_t,g,torch.ones(x_to_train_f.shape).to(device), retain_graph=True, create_graph=True)[0]
-        x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
+        # x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
                                                             
         x_v = x_v_t[:,[0]]
         x_t = x_v_t[:,[1]]
         x_tt = x_vv_tt[:,[1]]
-        x_ttt = x_vvv_ttt[:,[1]]
+        # x_ttt = x_vvv_ttt[:,[1]]
 
         # TODO change later
 
-        f = x_ttt
+        # f = x_ttt
+        f = x_tt - mcc.acc
         loss_f = self.loss_function(f,self.f_hat)
                 
         return loss_f
@@ -250,7 +251,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
-    data = np.genfromtxt('collected_data.csv', delimiter=',')
+    data = np.genfromtxt('collected_data_artificial.csv', delimiter=',')
     data = np.array(data, dtype=np.float32)
 
     assert data.shape[0] == mcc.TOTAL_ITERATIONS
@@ -364,7 +365,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     # Gets from 37% error to 8% error
     # For 0.02 error
-    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.001, 
+    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
                                 max_iter = 50000,
                                 tolerance_grad = 1.0 * np.finfo(float).eps, 
                                 tolerance_change = 1.0 * np.finfo(float).eps, 
