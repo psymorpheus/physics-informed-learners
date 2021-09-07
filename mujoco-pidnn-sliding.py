@@ -23,6 +23,7 @@ torch.manual_seed(1234)
 np.random.seed(1234)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 print("Running this on", device)
 if device == 'cuda': 
     print(torch.cuda.get_device_name())
@@ -189,13 +190,16 @@ class PINN(nn.Module):
         
         u = self.forward(g)
         # TODO see autograd
-        u_x_t = autograd.grad(u,g,torch.ones([x_to_train_f.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]                 
-        u_xx_tt = autograd.grad(u_x_t,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
+        x_v_t = autograd.grad(u,g,torch.ones([x_to_train_f.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]                 
+        x_vv_tt = autograd.grad(x_v_t,g,torch.ones(x_to_train_f.shape).to(device), create_graph=True)[0]
                                                             
-        u_x = u_x_t[:,[0]]
-        u_t = u_x_t[:,[1]]
-        u_xx = u_xx_tt[:,[0]]
-                                        
+        x_v = x_v_t[:,[0]]
+        x_t = x_v_t[:,[1]]
+        x_tt = x_vv_tt[:,[1]]
+
+        return 0
+        # TODO change later
+
         f = u_t + (self.forward(g))*(u_x) - (self.mu)*u_xx
         loss_f = self.loss_function(f,self.f_hat)
                 
@@ -204,7 +208,10 @@ class PINN(nn.Module):
     def loss(self,x,y,x_to_train_f):
 
         loss_u = self.loss_BC(x,y)
-        loss_f = 0 #self.loss_PDE(x_to_train_f)
+        if mcc.isPIDNN:
+            loss_f = 0 #self.loss_PDE(x_to_train_f)
+        else:
+            loss_f = 0
         loss_val = loss_u + loss_f
         
         return loss_val
@@ -272,8 +279,8 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # numpy.ndarray.min(axis) returns the min along a given axes
     # lb = [-1,0], ub = [1,0.99]
 
-    lb = VT_test[0]  # [-1. 0.]
-    ub = VT_test[-1] # [1.  0.99]
+    lb = VT_test[0]  # [0. 0.]
+    ub = VT_test[-1] # [1.  1.998]
         
     # Python splicing a:b does not include b
     # xx1 has all values of x at time t=0, uu1 has corresponding u values
@@ -304,9 +311,14 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     # idx tells which indices to pick finally by randomly sampling without replacement
 
-    idx = np.random.choice(VT_u_basecases.shape[0], N_u, replace=False)
-    VT_u_train = VT_u_basecases[idx, :]
-    u_train = x_basecases[idx, :]
+    if mcc.isPIDNN:
+        idx = np.random.choice(VT_u_basecases.shape[0], N_u, replace=False)
+        VT_u_train = VT_u_basecases[idx, :]
+        u_train = x_basecases[idx, :]
+    else:
+        idx = np.random.choice(VT_test.shape[0], N_u, replace=False)
+        VT_u_train = VT_test[idx, :]
+        u_train = x_true[idx, :]
 
     # TODO correct this in initial paper, X_f_train should not contain X_u_train, or it should contain them properly sampled
 
@@ -351,7 +363,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     # Gets from 37% error to 8% error
     # For 0.02 error
-    optimizer = torch.optim.LBFGS(model.parameters(), lr=1, 
+    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
                                 max_iter = 50000,
                                 tolerance_grad = 1.0 * np.finfo(float).eps, 
                                 tolerance_change = 1.0 * np.finfo(float).eps, 

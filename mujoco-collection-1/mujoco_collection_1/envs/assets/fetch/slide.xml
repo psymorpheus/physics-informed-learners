@@ -21,7 +21,8 @@
 
 		<body name="object0" pos="0.025 0.025 0.02">
 			<joint name="object0:joint" type="free" damping="0.01"></joint>
-			<geom size="0.025 0.02" type="cylinder" condim="3" name="object0" material="puck_mat" friction="0.1 0.005 0.0001" mass="20"></geom>
+			<!-- <geom size="0.025 0.02" type="cylinder" condim="3" name="object0" material="puck_mat" friction="0.1 0.005 0.0001" mass="20"></geom> -->
+			<geom type="box" size="0.0005 0.0005 0.02" condim="3" name="object0" material="puck_mat" friction="0.1 0.005 0.0001" mass="20"/>
 			<site name="object0" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"></site>
 		</body>
 

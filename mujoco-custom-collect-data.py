@@ -20,8 +20,9 @@ for vx in tqdm(mcc.vx_range, desc = 'tqdm() Progress Bar'):
 
   initial_obj_pos = obs["observation"][3:6]
   initial_obj_vel = obs["observation"][14:17]
+  initial_obj_rvel = obs["observation"][17:20]
   if mcc.save_debug:
-    debug_data = np.array([np.hstack([[0],initial_obj_pos,initial_obj_vel,[initial_obj_vel[1]/initial_obj_vel[0]]])])
+    debug_data = np.array([np.hstack([[0],initial_obj_pos,initial_obj_vel,initial_obj_rvel,[initial_obj_vel[1]/initial_obj_vel[0]]])])
 
   data = np.zeros(shape=(len(mcc.t_range),1), dtype=np.float32)
 
@@ -34,10 +35,11 @@ for vx in tqdm(mcc.vx_range, desc = 'tqdm() Progress Bar'):
 
       obj_pos = obs["observation"][3:6]
       obj_vel = obs["observation"][14:17]
+      obj_rvel = obs["observation"][17:20]
       data[iter][0] = obj_pos[0] - initial_obj_pos[0]
 
       if mcc.save_debug:
-        new_observation = np.array([np.hstack([[iter],obj_pos,obj_vel,[obj_vel[1]/obj_vel[0]]])])
+        new_observation = np.array([np.hstack([[iter],obj_pos,obj_vel,obj_rvel,[obj_vel[1]/obj_vel[0]]])])
         debug_data = np.vstack([debug_data, new_observation])
 
       iter += 1
@@ -49,10 +51,8 @@ for vx in tqdm(mcc.vx_range, desc = 'tqdm() Progress Bar'):
   
   if mcc.save_debug:
     filename = "debug_data-" + time.strftime("%Y%m%d-%H%M%S")
-    toSave = input('Save file?[Y/n] ')
-    if toSave[0].lower() == 'y':
-        np.savetxt(filename + ".csv", debug_data, delimiter=",")
-        sc.savemat(filename + ".mat", {'debug_data':debug_data})
+    np.savetxt(filename + ".csv", debug_data, delimiter=",")
+    sc.savemat(filename + ".mat", {'debug_data':debug_data})
 
 # To remove starting pad of zeros
 collected_data = collected_data[:, 1:]
