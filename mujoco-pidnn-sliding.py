@@ -205,9 +205,9 @@ class PINN(nn.Module):
         # f = x_ttt
 
         # Performs worse
-        # f = x_tt - mcc.acc
+        f = x_tt - mcc.acc
 
-        f = x_t - g[:,0:1] - mcc.acc*g[:,1:]
+        # f = x_t - g[:,0:1] - mcc.acc*g[:,1:]
 
         loss_f = self.loss_function(f,self.f_hat)
                 
