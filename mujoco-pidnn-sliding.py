@@ -24,6 +24,7 @@ torch.manual_seed(1234)
 np.random.seed(1234)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 print("Running this on", device)
 if device == 'cuda': 
     print(torch.cuda.get_device_name())
@@ -100,7 +101,7 @@ def solutionplot(u_pred, X_u_train, u_train, X, T, x, t, usol):
 
 class PINN(nn.Module):
     
-    def __init__(self, X_u, u, X_f, layers, lb, ub, nu):
+    def __init__(self, X_u, u, X_f, layers, lb, ub, mu):
         super().__init__() #call __init__ from parent class 
                 
         # Try to specify types like float as much as you can
@@ -114,7 +115,7 @@ class PINN(nn.Module):
         self.u = u
         
         self.layers = layers
-        self.nu = nu
+        self.mu = mu
 
         # activation function
         self.activation = nn.Tanh()
@@ -175,7 +176,7 @@ class PINN(nn.Module):
     def loss_BC(self,x,y):
 
         # Loss at boundary and inital conditions
-        loss_u = self.loss_function(self.forward(x), y)  
+        loss_u = self.loss_function(self.forward(x), y)
         return loss_u
 
     def loss_PDE(self, x_to_train_f):
@@ -197,7 +198,7 @@ class PINN(nn.Module):
         u_t = u_x_t[:,[1]]
         u_xx = u_xx_tt[:,[0]]
                                         
-        f = u_t + (self.forward(g))*(u_x) - (self.nu)*u_xx
+        f = u_t + (self.forward(g))*(u_x) - (self.mu)*u_xx
         loss_f = self.loss_function(f,self.f_hat)
                 
         return loss_f
@@ -281,16 +282,16 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # xx2 has min x at all t, xx3 has max x at all t
 
     #Initial Condition -1 =< x =<1 and t = 0  
-    leftedge_x = np.hstack((X[0,:][:,None], T[0,:][:,None])) #L1
-    leftedge_u = usol[:,0][:,None]
+    leftedge_vt = np.hstack((V[:,0][:,None], T[:,0][:,None])) #L1
+    leftedge_x = xsol[:,0][:,None]
 
     #Boundary Condition x = -1 and 0 =< t =<1
-    bottomedge_x = np.hstack((X[:,0][:,None], T[:,0][:,None])) #L2
-    bottomedge_u = usol[-1,:][:,None]
+    # bottomedge_vt = np.hstack((V[:,0][:,None], T[:,0][:,None])) #L2
+    # bottomedge_x = xsol[-1,:][:,None]
 
     #Boundary Condition x = 1 and 0 =< t =<1
-    topedge_x = np.hstack((X[:,-1][:,None], T[:,0][:,None])) #L3
-    topedge_u = usol[0,:][:,None]
+    topedge_vt = np.hstack((V[0,:][:,None], T[0,:][:,None])) #L3
+    topedge_x = xsol[0,:][:,None]
 
     # xx1 forms initial condition, xx2 & xx3 form boundary conditions
     # vstack for vertically stacking (_,2) ndarrays
@@ -300,32 +301,33 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # Gives an samples*n output
     # X_f_train contains all collocation as well as ALL boundary and initial points (without sampling)
     
-    XT_u_basecases = np.vstack([leftedge_x, bottomedge_x, topedge_x])
-    u_basecases = np.vstack([leftedge_u, bottomedge_u, topedge_u])
+    VT_x_basecases = np.vstack([leftedge_vt, topedge_vt])
+    x_basecases = np.vstack([leftedge_x, topedge_x])
 
     # idx tells which indices to pick finally by randomly sampling without replacement
 
-    idx = np.random.choice(XT_u_basecases.shape[0], N_u, replace=False)
-    XT_u_train = XT_u_basecases[idx, :]
-    u_train = u_basecases[idx, :]
+    idx = np.random.choice(VT_x_basecases.shape[0], N_u, replace=False)
+    VT_u_train = VT_x_basecases[idx, :]
+    u_train = x_basecases[idx, :]
 
     # TODO correct this in initial paper, X_f_train should not contain X_u_train, or it should contain them properly sampled
 
-    X_f_train = lb + (ub-lb)*lhs(2, N_f)
-    X_f_train = np.vstack((X_f_train, XT_u_train))                  # TODO Don't know why this should be here
+    # These f points are the ones where it forces differential value to become 0
+    VT_f_train = lb + (ub-lb)*lhs(2, N_f)
+    VT_f_train = np.vstack((VT_f_train, VT_u_train))                  # TODO Don't know why this should be here
 
     # Convert all to tensors
 
-    XT_u_train = torch.from_numpy(XT_u_train).float().to(device)
-    u_train = torch.from_numpy(u_train).float().to(device)
-    X_f_train = torch.from_numpy(X_f_train).float().to(device)
+    VT_u_train = torch.from_numpy(VT_u_train).float().to(device)
+    x_train = torch.from_numpy(u_train).float().to(device)
+    VT_f_train = torch.from_numpy(VT_f_train).float().to(device)
 
-    X_test_tensor = torch.from_numpy(X_test).float().to(device)
-    u = torch.from_numpy(u_true).float().to(device)
-    f_hat = torch.zeros(X_f_train.shape[0],1).to(device)
+    VT_test_tensor = torch.from_numpy(VT_test).float().to(device)
+    u = x_train
+    f_hat = torch.zeros(VT_f_train.shape[0],1).to(device)
         
-    model = PINN(XT_u_train, u_train, X_f_train, layers, lb, ub, nu)
-    model.fill_meta(X_test_tensor, u, f_hat)
+    model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub, mu)
+    model.fill_meta(VT_test_tensor, u, f_hat)
     model.to(device)
 
     print(model)
@@ -375,7 +377,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
     # usol_plot = data['usol']
     # X_plot, T_plot = np.meshgrid(x_plot, t_plot)
     
-    solutionplot(u_pred, XT_u_train.cpu().detach().numpy(), u_train.cpu().detach().numpy(), X, T, x, t, usol)
+    # solutionplot(u_pred, XT_u_train.cpu().detach().numpy(), u_train.cpu().detach().numpy(), X, T, x, t, usol)
 
 
 if __name__ == "__main__": 

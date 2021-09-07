@@ -8,7 +8,7 @@ from tqdm import tqdm
 import mujoco_collection_constants as mcc
 
 # Final shape of collected data is (mcc.TOTAL_ITERATIONS, V_VALUES)
-collected_data = np.zeros(shape=(mcc.TOTAL_ITERATIONS,1), dtype=np.float32)
+collected_data = np.zeros(shape=(len(mcc.t_range),1), dtype=np.float32)
 
 for vx in tqdm(mcc.vx_range, desc = 'tqdm() Progress Bar'):
   obj_init = np.array([vx,0.0], dtype=np.float32)
@@ -23,11 +23,11 @@ for vx in tqdm(mcc.vx_range, desc = 'tqdm() Progress Bar'):
   if mcc.save_debug:
     debug_data = np.array([np.hstack([[0],initial_obj_pos,initial_obj_vel,[initial_obj_vel[1]/initial_obj_vel[0]]])])
 
-  data = np.zeros(shape=(mcc.TOTAL_ITERATIONS,1), dtype=np.float32)
+  data = np.zeros(shape=(len(mcc.t_range),1), dtype=np.float32)
 
   iter += 1
 
-  while (iter<mcc.TOTAL_ITERATIONS):
+  while (iter<len(mcc.t_range)):
       if mcc.render:
         env.render(mode="human")
       obs, reward, done, info = env.step(defStep)
