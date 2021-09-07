@@ -201,8 +201,14 @@ class PINN(nn.Module):
 
         # TODO change later
 
+        # Performs worst
         # f = x_ttt
-        f = x_tt - mcc.acc
+
+        # Performs worse
+        # f = x_tt - mcc.acc
+
+        f = x_t - g[:,0:1] - mcc.acc*g[:,1:]
+
         loss_f = self.loss_function(f,self.f_hat)
                 
         return loss_f
@@ -365,7 +371,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
     # Gets from 37% error to 8% error
     # For 0.02 error
-    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.1, 
+    optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
                                 max_iter = 50000,
                                 tolerance_grad = 1.0 * np.finfo(float).eps, 
                                 tolerance_change = 1.0 * np.finfo(float).eps, 
