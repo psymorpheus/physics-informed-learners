@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import shape
 import torch
 import torch.autograd as autograd         # computation graph TODO see course about this
 from torch import Tensor                  # tensor node in the computation graph
@@ -16,22 +17,16 @@ import time
 from pyDOE import lhs         # Latin Hypercube Sampling
 import scipy.io               # Loading .mat matlab data 
 
-#Set default dtype to float32
+import mujoco_collection_constants as mcc
+
 torch.set_default_dtype(torch.float)
-
-#PyTorch random number generator
 torch.manual_seed(1234)
-
-# Random number generators in other libraries
 np.random.seed(1234)
 
-# Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 print("Running this on", device)
-
 if device == 'cuda': 
-    print(torch.cuda.get_device_name()) 
+    print(torch.cuda.get_device_name())
 
 def solutionplot(u_pred, X_u_train, u_train, X, T, x, t, usol):
     
@@ -242,40 +237,44 @@ class PINN(nn.Module):
 
 def main_loop(N_u, N_f, num_layers, num_neurons):
      
-    nu = 0.01/np.pi
+    mu = np.float32(0.1)
 
     # layers is a list not an ndarray
 
     layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
-    
-    data = scipy.io.loadmat('Data/burgers_shock_mu_01_pi.mat')
+
+    data = np.genfromtxt('collected_data.csv', delimiter=',')
+    data = np.array(data, dtype=np.float32)
+
+    assert data.shape[0] == mcc.TOTAL_ITERATIONS
+    assert data.shape[1] == mcc.vx_range.shape[0]
     
     # All these are numpy.ndarray
     # t.shape = (100,1), x.shape = (256,1), Exact.shape = (100,256)
     # usol means u for solution to those points
     # [:,None] is used to make a vertical array out of a horizontal one
 
-    x = data['x']
-    t = data['t']
-    usol = data['usol']
+    v = mcc.vx_range
+    t = mcc.t_range
+    xsol = data
     
     # X.shape = (100,256), Y.shape = (100, 256)
     # X has x repeated 100 times and T has t repeated 256 times
 
-    X, T = np.meshgrid(x,t)
+    V, T = np.meshgrid(v,t)
     
     # Horizontally stack them, X_test.shape = (25600,2) = u_star.shape
 
-    X_test = np.hstack((X.flatten()[:,None], T.flatten()[:,None]))
-    u_true = usol.flatten('F')[:,None] 
+    VT_test = np.hstack((V.flatten()[:,None], T.flatten()[:,None]))
+    x_true = xsol.flatten('C')[:,None]
     # Whether fortran-style flatten (column-major) to be used or normal: Transposing and .flatten('F') are the same thing
 
     # Domain bounds
     # numpy.ndarray.min(axis) returns the min along a given axes
     # lb = [-1,0], ub = [1,0.99]
 
-    lb = X_test[0]  # [-1. 0.]
-    ub = X_test[-1] # [1.  0.99]   
+    lb = VT_test[0]  # [-1. 0.]
+    ub = VT_test[-1] # [1.  0.99]
         
     # Python splicing a:b does not include b
     # xx1 has all values of x at time t=0, uu1 has corresponding u values
