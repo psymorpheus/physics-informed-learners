@@ -13,8 +13,8 @@ node_modules
 # Ignore SASS config files
 .sass-cache
 
-data-*.csv
-data-*.mat
+data*.csv
+data*.mat
 __pycache__/
 .DS_store
 collected_data*
