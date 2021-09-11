@@ -1,7 +1,7 @@
 from enum import Flag
 import numpy as np
 
-data_config = 'artificial_stop'
+data_config = 'mujoco_stop'
 filename = 'data_' + data_config + '.csv'
 
 save_collected = True
@@ -9,7 +9,7 @@ model_config = None
 
 collocation_is_border = False
 take_differential_points = True
-num_collocation = 100
+num_collocation = 200
 num_differential = 10000
 num_layers = 8
 neurons_per_layer = 20
@@ -19,7 +19,7 @@ neurons_per_layer = 20
 2: x_tt = acc
 3. x_ttt = 0
 """
-differential_order = 2
+differential_order = 3
 
 if data_config == 'artificial_nostop':
     artificial_data = True
