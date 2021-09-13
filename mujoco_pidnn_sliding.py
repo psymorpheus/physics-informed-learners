@@ -115,12 +115,12 @@ class PINN(nn.Module):
 				
 		self.iter += 1
 		if self.iter % 100 == 0:
-			error_vec, _ = mpd.testset_loss(self)
+			error_vec = mpd.testset_loss(self, device)
 			print(loss, error_vec)
 
 		return loss
 
-def main_loop(N_u, N_f, num_layers, num_neurons):
+def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 	torch.set_default_dtype(torch.float)
 	torch.manual_seed(1234)
 	np.random.seed(1234)
@@ -132,10 +132,10 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 	if device == 'cuda': 
 		print(torch.cuda.get_device_name())
 
-	# layers is a list not an ndarray
+	# layers is a list, not an ndarray
 	layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
-	VT_u_train, u_train, VT_f_train, lb, ub = mpd.dataloader(N_u, N_f, device)
+	VT_u_train, u_train, VT_f_train, lb, ub = mpd.dataloader(N_u, N_f, device, N_validation)
 		
 	model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub)
 	model.to(device)
@@ -158,9 +158,11 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
 
 	""" Model Accuracy """ 
-	error_vec, u_pred = mpd.testset_loss(model)
+	error_test = mpd.testset_loss(model, device, validation=False)
+	error_validation = mpd.testset_loss(model, device)
 
-	print('Test Error: %.5f'  % (error_vec))
+	print('Test Error: %.5f'  % (error_test))
+	print('Validation Error: %.5f'  % (error_validation))
 
 if __name__ == "__main__": 
-	main_loop(mcc.num_collocation, mcc.num_differential, mcc.num_layers, mcc.neurons_per_layer)
+	main_loop(mcc.num_datadriven, mcc.num_collocation, mcc.num_layers, mcc.neurons_per_layer, mcc.num_validation)
