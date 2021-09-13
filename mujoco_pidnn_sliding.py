@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 import mujoco_collection_constants as mcc
-from mujoco_pidnn_dataloader import dataloader
+import mujoco_pidnn_dataloader as mpd
 
 device = None
 
@@ -25,6 +25,8 @@ class PINN(nn.Module):
 		self.XT_f = VT_f
 		self.layers = layers
 
+		self.f_hat = torch.zeros(VT_f.shape[0],1).to(device)
+
 		self.activation = nn.Tanh()
 		self.loss_function = nn.MSELoss(reduction ='mean')
 		self.linears = nn.ModuleList([nn.Linear(layers[i], layers[i+1]) for i in range(len(layers)-1)])
@@ -34,11 +36,6 @@ class PINN(nn.Module):
 			# Recommended gain value for tanh = 5/3? TODO
 			nn.init.xavier_normal_(self.linears[i].weight.data, gain=1.0)
 			nn.init.zeros_(self.linears[i].bias.data)
-
-	def fill_meta(self, X_test_tensor, u_test, f_hat):
-		self.X_test_tensor = X_test_tensor
-		self.u_test = u_test
-		self.f_hat = f_hat
 	
 	def forward(self,x):
 		if torch.is_tensor(x) != True:
@@ -118,18 +115,10 @@ class PINN(nn.Module):
 				
 		self.iter += 1
 		if self.iter % 100 == 0:
-			error_vec, _ = self.test()
+			error_vec, _ = mpd.testset_loss(self)
 			print(loss, error_vec)
 
 		return loss
-	
-	def test(self):
-				
-		u_pred = self.forward(self.X_test_tensor)
-		error_vec = torch.linalg.norm((self.u_test-u_pred),2)/torch.linalg.norm(self.u_test,2)		# Relative L2 Norm of the error (Vector)
-		u_pred = u_pred.cpu().detach().numpy()
-		u_pred = np.reshape(u_pred,(mcc.vx_range.shape[0],mcc.t_range.shape[0]),order='F')
-		return error_vec, u_pred
 
 def main_loop(N_u, N_f, num_layers, num_neurons):
 	torch.set_default_dtype(torch.float)
@@ -146,10 +135,9 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 	# layers is a list not an ndarray
 	layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
-	VT_u_train, u_train, VT_f_train, lb, ub, VT_test_tensor, u, f_hat = dataloader(N_u, N_f, device)
+	VT_u_train, u_train, VT_f_train, lb, ub = mpd.dataloader(N_u, N_f, device)
 		
 	model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub)
-	model.fill_meta(VT_test_tensor, u, f_hat)
 	model.to(device)
 
 	print(model)
@@ -170,7 +158,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons):
 
 
 	""" Model Accuracy """ 
-	error_vec, u_pred = model.test()
+	error_vec, u_pred = mpd.testset_loss(model)
 
 	print('Test Error: %.5f'  % (error_vec))
 
