@@ -22,14 +22,15 @@ def plot_history():
 	plt.plot(epochs, training_loss, color = (63/255, 97/255, 143/255), label='Training loss')
 	plt.plot(epochs, validation_loss, color = (179/255, 89/255, 92/255), label='Validation loss')
 	plt.plot(epochs, testing_loss, color = (107/255, 153/255, 84/255), label='Testing loss')
-	plt.title('Training, Validation and Testing loss (all MSE)')
+	plt.title('Training, Validation and Testing loss (MSE, relative L2, relative L2)')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.legend()
 	# plt.show()
-	savefile_name = mcc.filename[:-4]
+	savefile_name = 'plot_' + mcc.filename[5:-4]
 	if mcc.training_is_border: savefile_name += '_border'
 	else: savefile_name += '_internal'
+	savefile_name += '_order_' + str(mcc.differential_order)
 	savefile_name += '.png'
 	plt.savefig(savefile_name)
 
@@ -135,15 +136,16 @@ class PINN(nn.Module):
 		optimizer.zero_grad()
 		loss = self.loss(self.VT_u, self.X_u, self.XT_f)
 		loss.backward()		# To get gradients
-				
+
+		self.iter += 1
+
 		if self.iter % 100 == 0:
 			training_loss = loss.item()
 			validation_loss = mpd.testset_loss(self, device).item()
 			testing_loss = mpd.testset_loss(self, device, validation=False).item()
 			training_history.append([self.iter, training_loss, validation_loss, testing_loss])
-			print("Train:", training_loss, "Validation:", validation_loss, "Testing:", testing_loss)
+			print(training_loss, validation_loss, testing_loss)
 
-		self.iter += 1
 		return loss
 
 def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
@@ -167,6 +169,7 @@ def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 	model.to(device)
 
 	print(model)
+	print("[Training] [Validation] [Testing]")
 
 	# L-BFGS Optimizer
 
@@ -187,9 +190,8 @@ def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 	error_test = mpd.testset_loss(model, device, validation=False).item()
 	error_validation = mpd.testset_loss(model, device).item()
 
-	print('Test Error: %.5f'  % (error_test))
 	print('Validation Error: %.5f'  % (error_validation))
-
+	print('Test Error: %.5f'  % (error_test))
 
 	"""" For plotting model train, validation, test errors """
 	plot_history()

@@ -1,7 +1,7 @@
 from enum import Flag
 import numpy as np
 
-data_config = ['mujoco','stop']
+data_config = ['artificial','nostop']
 filename = 'data'
 for dc in data_config: filename += '_' + dc
 filename += '.csv'
@@ -9,7 +9,7 @@ filename += '.csv'
 save_collected = True
 model_config = None
 
-training_is_border = False
+training_is_border = True
 take_differential_points = True
 num_datadriven = 200
 num_collocation = 1000
@@ -54,7 +54,7 @@ elif 'mujoco' in data_config:
     acc = np.float32(-0.4)
     if 'stop' in data_config:
         TOTAL_ITERATIONS = 1000
-        V_VALUES = 200
+        V_VALUES = 20
         vx_range = np.linspace(0.0, 1.0, num=V_VALUES, dtype=np.float32)
         t_range = np.arange(start=0.0, stop=0.002*TOTAL_ITERATIONS, step=0.002)
     elif 'nostop' in data_config:
