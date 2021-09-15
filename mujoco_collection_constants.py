@@ -9,10 +9,10 @@ filename += '.csv'
 save_collected = True
 model_config = None
 
-training_is_border = True
+training_is_border = False
 take_differential_points = True
 num_datadriven = 200
-num_collocation = 10000
+num_collocation = 1000
 num_layers = 8
 neurons_per_layer = 20
 num_validation = 1000
