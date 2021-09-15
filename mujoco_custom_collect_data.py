@@ -51,9 +51,9 @@ def custom_collect_data():
 		if mcc.render: glfw.terminate()
 		
 		if mcc.save_debug:
-			filename = "debug_data-" + time.strftime("%Y%m%d-%H%M%S")
+			filename = "debug_data-" + time.strftime("%Y%m%d-%H%M%S") + "-" + str(vx)
 			np.savetxt(filename + ".csv", debug_data, delimiter=",")
-			sc.savemat(filename + ".mat", {'debug_data':debug_data})
+			# sc.savemat(filename + ".mat", {'debug_data':debug_data})
 
 	# To remove starting pad of zeros
 	collected_data = collected_data[:, 1:]

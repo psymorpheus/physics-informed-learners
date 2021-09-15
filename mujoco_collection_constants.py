@@ -1,7 +1,7 @@
 from enum import Flag
 import numpy as np
 
-data_config = ['artificial','nostop']
+data_config = ['mujoco','stop']
 filename = 'data'
 for dc in data_config: filename += '_' + dc
 filename += '.csv'
@@ -24,6 +24,7 @@ batch_size = 64
 3. x_ttt = 0
 """
 differential_order = 3
+TIMESTEP = 0.002 * 20
 
 def invalid_config():
     print("Not a valid data/model configuration.")
@@ -36,33 +37,33 @@ if 'artificial' in data_config:
         TOTAL_ITERATIONS = 1000
         V_VALUES = 20
         vx_range = np.linspace(0.0, 1.0, num=V_VALUES, dtype=np.float32)
-        t_range = np.arange(start=0.0, stop=0.002*TOTAL_ITERATIONS, step=0.002)
-        acc = np.float32(-0.5)
+        t_range = np.arange(start=0.0, stop=TIMESTEP*TOTAL_ITERATIONS, step=TIMESTEP)
+        acc = np.float32(-0.05)
     elif 'nostop' in data_config:
         TOTAL_ITERATIONS = 1000
         V_VALUES = 20
         vx_range = np.linspace(0.0, 2.0, num=V_VALUES, dtype=np.float32)
         if not training_is_border: vx_range += 0.1
-        t_range = np.arange(start=0.0, stop=0.002*TOTAL_ITERATIONS, step=0.002)
-        acc = np.float32(-0.005)
+        t_range = np.arange(start=0.0, stop=TIMESTEP*TOTAL_ITERATIONS, step=TIMESTEP)
+        acc = np.float32(-0.0005)
     else:
         invalid_config()
 elif 'mujoco' in data_config:
     render = False
     save_debug = False
     artificial_data = False
-    acc = np.float32(-0.4)
+    acc = np.float32(-0.3928519)
     if 'stop' in data_config:
         TOTAL_ITERATIONS = 1000
         V_VALUES = 20
         vx_range = np.linspace(0.0, 1.0, num=V_VALUES, dtype=np.float32)
-        t_range = np.arange(start=0.0, stop=0.002*TOTAL_ITERATIONS, step=0.002)
+        t_range = np.arange(start=0.0, stop=TIMESTEP*TOTAL_ITERATIONS, step=TIMESTEP)
     elif 'nostop' in data_config:
         TOTAL_ITERATIONS = 40
-        V_VALUES = 200
+        V_VALUES = 500
         vx_range = np.linspace(0.0, 1.0, num=V_VALUES, dtype=np.float32)
         if not training_is_border: vx_range += 1.5
-        t_range = np.arange(start=0.0, stop=0.002*TOTAL_ITERATIONS, step=0.002)
+        t_range = np.arange(start=0.0, stop=TIMESTEP*TOTAL_ITERATIONS, step=TIMESTEP)
     else:
         invalid_config()
 else:
