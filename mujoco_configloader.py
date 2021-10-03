@@ -9,7 +9,7 @@ try:
         common_config.update(active_config)
         config = common_config
 except:
-    print("Some problem with the YAML file.")
+    print("Some problem with the YAML file, exiting.")
     import sys
     sys.exit(1)
 

@@ -6,8 +6,8 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-import mujoco_collection_constants as mcc
-import mujoco_pidnn_dataloader as mpd
+from mujoco_configloader import config
+import mujoco_dataloader as mpd
 
 device = None
 training_history = []		# Has iter, training loss, validation loss, testing loss
@@ -27,10 +27,10 @@ def plot_history():
 	plt.ylabel('Loss')
 	plt.legend()
 	# plt.show()
-	savefile_name = 'plot_' + mcc.filename[5:-4]
-	if mcc.training_is_border: savefile_name += '_border'
+	savefile_name = 'plot_' + config['filename'][5:-4]
+	if config['training_is_border']: savefile_name += '_border'
 	else: savefile_name += '_internal'
-	savefile_name += '_order_' + str(mcc.differential_order)
+	savefile_name += '_order_' + str(config['differential_order'])
 	savefile_name += '.png'
 	plt.savefig(savefile_name)
 
@@ -94,17 +94,17 @@ class PINN(nn.Module):
 		
 		u = self.forward(g)
 		
-		if mcc.differential_order==1:
+		if config['differential_order']==1:
 			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), create_graph=True)[0]
 			x_t = x_v_t[:,[1]]
-			f = x_t - g[:,0:1] - mcc.acc*g[:,1:]
-		elif mcc.differential_order==2:
+			f = x_t - g[:,0:1] - config['acc']*g[:,1:]
+		elif config['differential_order']==2:
 			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
 			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(device), create_graph=True)[0]
 			x_t = x_v_t[:,[1]]
 			x_tt = x_vv_tt[:,[1]]
-			f = x_tt - mcc.acc
-		elif mcc.differential_order==3:
+			f = x_tt - config['acc']
+		elif config['differential_order']==3:
 			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
 			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(device), retain_graph=True, create_graph=True)[0]
 			x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(VT_f_train.shape).to(device), create_graph=True)[0]
@@ -120,7 +120,7 @@ class PINN(nn.Module):
 	def loss(self,VT_u_train,X_u_train,VT_f_train):
 
 		loss_u = self.loss_BC(VT_u_train,X_u_train)
-		if mcc.take_differential_points:
+		if config['take_differential_points']:
 			loss_f = self.loss_PDE(VT_f_train)
 		else:
 			loss_f = 0
@@ -197,4 +197,4 @@ def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 	plot_history()
 
 if __name__ == "__main__": 
-	main_loop(mcc.num_datadriven, mcc.num_collocation, mcc.num_layers, mcc.neurons_per_layer, mcc.num_validation)
+	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])
