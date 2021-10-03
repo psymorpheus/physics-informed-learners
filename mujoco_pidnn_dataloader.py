@@ -1,5 +1,5 @@
 import numpy as np
-import mujoco_collection_constants as mcc
+import mujoco_configloader as mcl
 import torch
 from pyDOE import lhs
 from torch.utils.data import Dataset, DataLoader
@@ -56,7 +56,7 @@ def testset_loss(model, device, validation=True):
 		error_vec = torch.linalg.norm((X_test-X_pred),2)/torch.linalg.norm(X_test,2)		# Relative L2 Norm of the error (Vector)
 
 	X_pred = X_pred.cpu().detach().numpy()
-	# X_pred = np.reshape(X_pred,(mcc.vx_range.shape[0],mcc.t_range.shape[0]),order='F')
+	# X_pred = np.reshape(X_pred,(mcl.vx_range.shape[0],mcl.t_range.shape[0]),order='F')
 	# return error_vec, X_pred
 	return error_vec
 
@@ -65,14 +65,14 @@ def dataloader(N_u, N_f, device, N_validation=0):
 	N_f = collocation points for differential for differential driven training
 	"""
 
-	data = np.genfromtxt(mcc.filename, delimiter=',')
+	data = np.genfromtxt(mcl.filename, delimiter=',')
 	data = np.array(data, dtype=np.float32)
 
-	assert data.shape[0] == mcc.TOTAL_ITERATIONS
-	assert data.shape[1] == mcc.vx_range.shape[0]
+	assert data.shape[0] == mcl.TOTAL_ITERATIONS
+	assert data.shape[1] == mcl.vx_range.shape[0]
 
-	vrange = mcc.vx_range
-	trange = mcc.t_range
+	vrange = mcl.vx_range
+	trange = mcl.t_range
 	xrange = data
 
 	V, T = np.meshgrid(vrange,trange)
@@ -83,7 +83,7 @@ def dataloader(N_u, N_f, device, N_validation=0):
 	lb = np.min(VT_true, axis=0)
 	ub = np.max(VT_true, axis=0)
 
-	if mcc.training_is_border:
+	if mcl.training_is_border:
 		VT_indices = np.arange(VT_true.shape[0])
 		VT_basecase_indices = VT_indices[np.logical_or(VT_true[:,0] == 0, VT_true[:,1] == 0)]
 
@@ -122,8 +122,8 @@ def dataloader(N_u, N_f, device, N_validation=0):
 	global test_dataset, validation_dataset, test_dataloader, validation_dataloader
 	test_dataset = VTDataset(VT_test, X_test)
 	validation_dataset = VTDataset(VT_validation, X_validation)
-	test_dataloader = DataLoader(test_dataset, batch_size=mcc.batch_size, shuffle=True, drop_last=True)
-	validation_dataloader = DataLoader(validation_dataset, batch_size=mcc.batch_size, shuffle=True, drop_last=True)
+	test_dataloader = DataLoader(test_dataset, batch_size=mcl.batch_size, shuffle=True, drop_last=True)
+	validation_dataloader = DataLoader(validation_dataset, batch_size=mcl.batch_size, shuffle=True, drop_last=True)
 
 	return VT_u_train, X_u_train, VT_f_train, lb, ub
 

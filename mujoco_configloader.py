@@ -1,5 +1,8 @@
-from enum import Flag
+import yaml
 import numpy as np
+
+# with open("mujoco_configs.yaml", "r") as f:
+#     xx = yaml.safe_load(f)
 
 data_config = ['mujoco','stop']
 filename = 'data'
@@ -71,8 +74,8 @@ else:
 
 if __name__=="__main__":
     if artificial_data:
-        from mujoco_artificial_collect_data import artificial_collect_data
-        artificial_collect_data()
+        from mujoco_artificial_data import artificial_data
+        artificial_data()
     else:
-        from mujoco_custom_collect_data import custom_collect_data
-        custom_collect_data()
+        from mujoco_simulation_data import simulation_data
+        simulation_data()
