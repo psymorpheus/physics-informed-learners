@@ -4,9 +4,8 @@ from numpy.lib.function_base import append
 import scipy.io as sc
 import time
 from tqdm import tqdm
-from mujoco_configloader import config
 
-def artificial_datagen():
+def artificial_datagen(config):
 	# Final shape of collected data is (config['TOTAL_ITERATIONS'], V_VALUES)
 	collected_data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
 
@@ -27,7 +26,7 @@ def artificial_datagen():
 	collected_data = collected_data[:, 1:]
 
 	if config['save_collected']:
-		np.savetxt(config['filename'], collected_data, delimiter=",")
+		np.savetxt(config['dirname'] + config['datafile'], collected_data, delimiter=",")
 
 if __name__=="__main__":
   print("Please call this from collection constants file.")

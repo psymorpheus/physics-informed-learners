@@ -5,9 +5,8 @@ import scipy.io as sc
 import time
 import glfw
 from tqdm import tqdm
-from mujoco_configloader import config
 
-def simulation_datagen():
+def simulation_datagen(config):
 	# Final shape of collected data is (config['TOTAL_ITERATIONS'], V_VALUES)
 	collected_data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
 
@@ -59,7 +58,7 @@ def simulation_datagen():
 	collected_data = collected_data[:, 1:]
 
 	if config['save_collected']:
-		np.savetxt(config['filename'], collected_data, delimiter=",")
+		np.savetxt(config['dirname'] + config['datafile'], collected_data, delimiter=",")
 		# sc.savemat(config['filename'] + ".mat", {'collected_data':collected_data})
 
 if __name__=="__main__":

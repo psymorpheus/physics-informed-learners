@@ -1,38 +1,70 @@
-ACTIVE: ARTIFICIAL_STOP
-
 COMMON:
   save_collected: True
-  training_is_border: True
-  take_differential_points: True
-  num_datadriven: 200
-  num_collocation: 1000
   num_layers: 8
   neurons_per_layer: 20
   num_validation: 1000
   batch_size: 64
+  ood_delta: 1.5
 
   ### Tells the type of the differential equation used
   ### 1: x_t = v + acc*t
   ### 2: x_tt = acc
   ### 3. x_ttt = 0
 
-  differential_order: 3
   TIMESTEP: 0.004 # 0.002 * 20
+  datafile: data.csv
+
+# MODEL CONFIGS
+
+BORDER_O1:
+  model_name: border_o1
+  training_is_border: True
+  take_differential_points: True
+  num_datadriven: 200
+  num_collocation: 1000
+  differential_order: 1
+
+INTERNAL_O3:
+  model_name: internal_o3
+  training_is_border: False
+  take_differential_points: True
+  num_datadriven: 200
+  num_collocation: 1000
+  differential_order: 3
+
+STRONG_FF:
+  model_name: strong_ff
+  training_is_border: False
+  take_differential_points: False
+  num_datadriven: 1200
+  num_collocation: 0
+
+WEAK_FF:
+  model_name: weak_ff
+  training_is_border: False
+  take_differential_points: False
+  num_datadriven: 200
+  num_collocation: 0
+
+# DATA CONFIGS
 
 ARTIFICIAL_NOSTOP:
   artificial_data: True
   TOTAL_ITERATIONS: 1000
-  V_VALUES: 20
+  VX_VALUES: 20
+  VX_START: 0.1
+  VX_END: 1.1
   acc: -0.0005
-  VX_DELTA: 0.1
-  filename: ./Data/data_artificial_nostop.csv
+  dirname: ./Data/artificial_nostop/
 
 ARTIFICIAL_STOP:
   artificial_data: True
   TOTAL_ITERATIONS: 1000
-  V_VALUES: 20
+  VX_VALUES: 20
+  VX_START: 0.0
+  VX_END: 1.0
   acc: -0.05
-  filename: ./Data/data_artificial_stop.csv
+  dirname: ./Data/artificial_stop/
 
 SIMULATION_NOSTOP:
   render: False
@@ -40,9 +72,10 @@ SIMULATION_NOSTOP:
   artificial_data: False
   acc: -0.3928519
   TOTAL_ITERATIONS: 40
-  V_VALUES: 500
-  VX_DELTA: 1.5
-  filename: ./Data/data_simulation_nostop.csv
+  VX_VALUES: 500
+  VX_START: 1.5
+  VX_END: 2.5
+  dirname: ./Data/simulation_nostop/
 
 SIMULATION_STOP:
   render: False
@@ -50,5 +83,7 @@ SIMULATION_STOP:
   artificial_data: False
   acc: -0.3928519
   TOTAL_ITERATIONS: 1000
-  V_VALUES: 20
-  filename: ./Data/data_simulation_stop.csv
+  VX_VALUES: 20
+  VX_START: 0.0
+  VX_END: 1.0
+  dirname: ./Data/simulation_stop/

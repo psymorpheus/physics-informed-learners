@@ -16,7 +16,7 @@
 		<include file="robot.xml"></include>
 		
 		<body name="table0" pos="1.32441906 0.75018422 0.2">
-			<geom size="200.625 200.45 0.2" type="box" condim="3" name="table0" material="table_mat" mass="2000000" friction="0.1 0.005 0.0001"></geom>
+			<geom size="20000.625 20000.45 0.2" type="box" condim="3" name="table0" material="table_mat" mass="2000000" friction="0.1 0.005 0.0001"></geom>
 		</body>
 
 		<body name="object0" pos="0.025 0.025 0.02">

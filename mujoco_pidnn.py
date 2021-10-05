@@ -6,43 +6,41 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from mujoco_configloader import config
-import mujoco_dataloader as mpd
+import mujoco_dataloader as mdl
 
-device = None
-training_history = []		# Has iter, training loss, validation loss, testing loss
+optimizer = None
+training_history = []		# Has iter, training loss, validation loss
 
-def plot_history():
+def plot_history(config, elapsed, error_test):
 	global training_history
 	training_history = np.array(training_history)
 	epochs = training_history[:, 0].ravel()
 	training_loss = training_history[:, 1].ravel()
 	validation_loss = training_history[:, 2].ravel()
-	testing_loss = training_history[:, 3].ravel()
+	plt.clf()
 	plt.plot(epochs, training_loss, color = (63/255, 97/255, 143/255), label='Training loss')
 	plt.plot(epochs, validation_loss, color = (179/255, 89/255, 92/255), label='Validation loss')
-	plt.plot(epochs, testing_loss, color = (107/255, 153/255, 84/255), label='Testing loss')
-	plt.title('Training, Validation and Testing loss (MSE, relative L2, relative L2)')
+	plt.title('Training and Validation loss (MSE, relative L2)\n' + f'Elapsed: {elapsed:.2f}, Test Error: {error_test:.5f}')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.legend()
 	# plt.show()
-	savefile_name = 'plot_' + config['filename'][5:-4]
-	if config['training_is_border']: savefile_name += '_border'
-	else: savefile_name += '_internal'
-	savefile_name += '_order_' + str(config['differential_order'])
+	savefile_name = 'plot_' + config['model_name']
 	savefile_name += '.png'
-	plt.savefig(savefile_name)
+	plt.savefig(config['dirname'] + savefile_name)
 
 class PINN(nn.Module):
 	
-	def __init__(self, VT_u, X_u, VT_f, layers, lb, ub):
+	def __init__(self, VT_u, X_u, VT_f, layers, lb, ub, device, config):
 		""" For better comments refer to Burgers-PINN/myBurgers.py """
 
 		super().__init__()
 		
-		self.u_b = torch.from_numpy(ub).float().to(device)
-		self.l_b = torch.from_numpy(lb).float().to(device)
+		self.device = device
+		self.config = config
+
+		self.u_b = ub
+		self.l_b = lb
 	   
 		self.VT_u = VT_u
 		self.X_u = X_u
@@ -94,20 +92,20 @@ class PINN(nn.Module):
 		
 		u = self.forward(g)
 		
-		if config['differential_order']==1:
-			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), create_graph=True)[0]
+		if self.config['differential_order']==1:
+			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(self.device), create_graph=True)[0]
 			x_t = x_v_t[:,[1]]
-			f = x_t - g[:,0:1] - config['acc']*g[:,1:]
-		elif config['differential_order']==2:
-			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
-			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(device), create_graph=True)[0]
+			f = x_t - g[:,0:1] - self.config['acc']*g[:,1:]
+		elif self.config['differential_order']==2:
+			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(self.device), retain_graph=True, create_graph=True)[0]
+			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(self.device), create_graph=True)[0]
 			x_t = x_v_t[:,[1]]
 			x_tt = x_vv_tt[:,[1]]
-			f = x_tt - config['acc']
-		elif config['differential_order']==3:
-			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(device), retain_graph=True, create_graph=True)[0]
-			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(device), retain_graph=True, create_graph=True)[0]
-			x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(VT_f_train.shape).to(device), create_graph=True)[0]
+			f = x_tt - self.config['acc']
+		elif self.config['differential_order']==3:
+			x_v_t = autograd.grad(u,g,torch.ones([VT_f_train.shape[0], 1]).to(self.device), retain_graph=True, create_graph=True)[0]
+			x_vv_tt = autograd.grad(x_v_t,g,torch.ones(VT_f_train.shape).to(self.device), retain_graph=True, create_graph=True)[0]
+			x_vvv_ttt = autograd.grad(x_vv_tt,g,torch.ones(VT_f_train.shape).to(self.device), create_graph=True)[0]
 			x_t = x_v_t[:,[1]]
 			x_tt = x_vv_tt[:,[1]]
 			x_ttt = x_vvv_ttt[:,[1]]
@@ -120,7 +118,7 @@ class PINN(nn.Module):
 	def loss(self,VT_u_train,X_u_train,VT_f_train):
 
 		loss_u = self.loss_BC(VT_u_train,X_u_train)
-		if config['take_differential_points']:
+		if self.config['take_differential_points']:
 			loss_f = self.loss_PDE(VT_f_train)
 		else:
 			loss_f = 0
@@ -141,19 +139,27 @@ class PINN(nn.Module):
 
 		if self.iter % 100 == 0:
 			training_loss = loss.item()
-			validation_loss = mpd.testset_loss(self, device).item()
-			testing_loss = mpd.testset_loss(self, device, validation=False).item()
-			training_history.append([self.iter, training_loss, validation_loss, testing_loss])
-			print(training_loss, validation_loss, testing_loss)
+			validation_loss = mdl.validation_loss(self, self.device).item()
+			training_history.append([self.iter, training_loss, validation_loss])
+			print(training_loss, validation_loss)
 
 		return loss
 
-def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
+
+def pidnn_driver(config):
+	global training_history
+	training_history = []
+
+	N_u = config['num_datadriven']
+	N_f = config['num_collocation']
+	num_layers = config['num_layers']
+	num_neurons = config['neurons_per_layer']
+	N_validation = config['num_validation']
+
 	torch.set_default_dtype(torch.float)
 	torch.manual_seed(1234)
 	np.random.seed(1234)
 
-	global device
 	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 	print("Running this on", device)
@@ -163,13 +169,13 @@ def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 	# layers is a list, not an ndarray
 	layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
-	VT_u_train, u_train, VT_f_train, lb, ub = mpd.dataloader(N_u, N_f, device, N_validation)
+	VT_u_train, u_train, VT_f_train, lb, ub = mdl.dataloader(config, device)
 		
-	model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub)
+	model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config)
 	model.to(device)
 
 	print(model)
-	print("[Training] [Validation] [Testing]")
+	print("[Training] [Validation]")
 
 	# L-BFGS Optimizer
 
@@ -187,14 +193,14 @@ def main_loop(N_u, N_f, num_layers, num_neurons, N_validation):
 
 
 	""" Model Accuracy """ 
-	error_test = mpd.testset_loss(model, device, validation=False).item()
-	error_validation = mpd.testset_loss(model, device).item()
-
-	print('Validation Error: %.5f'  % (error_validation))
+	error_test = mdl.testset_loss(model, device).item()
 	print('Test Error: %.5f'  % (error_test))
 
-	"""" For plotting model train, validation, test errors """
-	plot_history()
+	"""" For plotting model train and validation errors """
+	plot_history(config, elapsed, error_test)
 
-if __name__ == "__main__": 
-	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])
+	""" Saving model for reloading later """
+	torch.save(model, config['dirname'] + config['model_name'] + '.pt')
+
+# if __name__ == "__main__": 
+# 	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])
