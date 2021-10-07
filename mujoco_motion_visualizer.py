@@ -16,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 data_configs = ['ARTIFICIAL_NOSTOP', 'ARTIFICIAL_STOP', 'SIMULATION_NOSTOP', 'SIMULATION_STOP']
 model_configs = ['BORDER_O1', 'INTERNAL_O3', 'STRONG_FF', 'WEAK_FF']
 active_data_config_name = data_configs[3]
-active_model_config_name = model_configs[1]
+active_model_config_name = model_configs[3]
 
 active_data_config = all_config[active_data_config_name].copy()
 active_data_config.update(common_config)

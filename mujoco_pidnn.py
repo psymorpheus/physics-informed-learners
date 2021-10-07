@@ -25,7 +25,7 @@ def plot_history(config, elapsed, error_test):
 	plt.ylabel('Loss')
 	plt.legend()
 	# plt.show()
-	savefile_name = 'plot_' + config['model_name']
+	savefile_name = 'plot_' + config['model_name'] + '_' + str(config['noise'])
 	savefile_name += '.png'
 	plt.savefig(config['dirname'] + savefile_name)
 
@@ -200,7 +200,7 @@ def pidnn_driver(config):
 	plot_history(config, elapsed, error_test)
 
 	""" Saving model for reloading later """
-	torch.save(model, config['dirname'] + config['model_name'] + '.pt')
+	torch.save(model, config['dirname'] + config['model_name'] + '_' + str(config['noise']) + '.pt')
 
 # if __name__ == "__main__": 
 # 	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])

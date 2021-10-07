@@ -5,6 +5,7 @@ COMMON:
   num_validation: 1000
   batch_size: 64
   ood_delta: 1.5
+  noise: 0.05
 
   ### Tells the type of the differential equation used
   ### 1: x_t = v + acc*t

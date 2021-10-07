@@ -109,6 +109,10 @@ def dataloader(config, device):
 	else:
 		VT_f_train = VT_u_train
 
+	""" Adding noise if taking internal points """
+	if not config['training_is_border']:
+		X_u_train = X_u_train + config['noise'] * np.std(X_u_train) * np.random.randn(X_u_train.shape[0], X_u_train.shape[1])
+
 	VT_u_train = torch.from_numpy(VT_u_train).float().to(device)
 	X_u_train = torch.from_numpy(X_u_train).float().to(device)
 	VT_f_train = torch.from_numpy(VT_f_train).float().to(device)
