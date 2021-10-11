@@ -14,6 +14,7 @@ with open("mujoco_config.yaml", "r") as f:
 data_configs = ['ARTIFICIAL_NOSTOP', 'ARTIFICIAL_STOP', 'SIMULATION_NOSTOP', 'SIMULATION_STOP']
 model_configs = ['BORDER_O1', 'INTERNAL_O3', 'STRONG_FF', 'WEAK_FF']
 noise_configs = [0.0, 0.01, 0.02, 0.05]
+noise_configs = [0.02]
 
 def generate_all_datasets():
     generate_data = False
@@ -51,12 +52,12 @@ def generate_all_datasets():
         
 def train_all_models():
     for noise in noise_configs:
-        for active_data_config in data_configs:
-            active_data_config = all_config[active_data_config].copy()
+        for active_data_config_name in data_configs:
+            active_data_config = all_config[active_data_config_name].copy()
             active_data_config.update(common_config)
 
-            for active_model_config in model_configs:
-                active_model_config = all_config[active_model_config].copy()
+            for active_model_config_name in model_configs:
+                active_model_config = all_config[active_model_config_name].copy()
                 active_model_config.update(active_data_config)
                 config = active_model_config
 
@@ -64,6 +65,7 @@ def train_all_models():
                 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
                 config['noise'] = noise
 
+                print(f'======================={active_data_config_name}, {active_model_config_name}=======================')
                 pidnn_driver(config)
 
 train_all_models()
@@ -109,7 +111,7 @@ def test_all_models():
         df_testdata.to_csv(f'inferences_testdata_{noise}.csv')
         df_ood.to_csv(f'inferences_ood_{noise}.csv')
 
-test_all_models()
+# test_all_models()
 
 
             
