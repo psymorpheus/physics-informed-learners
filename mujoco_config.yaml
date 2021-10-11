@@ -7,15 +7,25 @@ COMMON:
   ood_delta: 1.5
   noise: 0.05
 
-  ### Tells the type of the differential equation used
-  ### 1: x_t = v + acc*t
-  ### 2: x_tt = acc
-  ### 3. x_ttt = 0
-
   TIMESTEP: 0.004 # 0.002 * 20
   datafile: data.csv
+  oodfile: ood.csv
+
+  GENERATE_DATA: True
+  GENERATE_OOD: True
+
+  MODEL_CONFIGS: [BORDER_O1, INTERNAL_O3, WEAK_FF]
+  DATA_CONFIGS: [TOY_NOSTOP, TOY_STOP, SIMULATION_NOSTOP, SIMULATION_STOP]
+  NOISE_CONFIGS: [0.00, 0.01, 0.02, 0.05]
+
+  SAVE_PLOT: True
+  SAVE_MODEL: True
 
 # MODEL CONFIGS
+# differential_order - Tells the type of the differential equation used
+# 1: x_t = v + acc*t
+# 2: x_tt = acc
+# 3. x_ttt = 0
 
 BORDER_O1:
   model_name: border_o1
@@ -49,42 +59,42 @@ WEAK_FF:
 
 # DATA CONFIGS
 
-ARTIFICIAL_NOSTOP:
-  artificial_data: True
+TOY_NOSTOP:
+  toy_data: True
   TOTAL_ITERATIONS: 1000
   VX_VALUES: 20
   VX_START: 0.1
   VX_END: 1.1
   acc: -0.0005
-  dirname: ./Data/artificial_nostop/
+  datadir: ./Data/toy_nostop/
 
-ARTIFICIAL_STOP:
-  artificial_data: True
+TOY_STOP:
+  toy_data: True
   TOTAL_ITERATIONS: 1000
   VX_VALUES: 20
   VX_START: 0.0
   VX_END: 1.0
   acc: -0.05
-  dirname: ./Data/artificial_stop/
+  datadir: ./Data/toy_stop/
 
 SIMULATION_NOSTOP:
   render: False
   save_debug: False
-  artificial_data: False
+  toy_data: False
   acc: -0.3928519
   TOTAL_ITERATIONS: 40
   VX_VALUES: 500
   VX_START: 1.5
   VX_END: 2.5
-  dirname: ./Data/simulation_nostop/
+  datadir: ./Data/simulation_nostop/
 
 SIMULATION_STOP:
   render: False
   save_debug: False
-  artificial_data: False
+  toy_data: False
   acc: -0.3928519
   TOTAL_ITERATIONS: 1000
   VX_VALUES: 20
   VX_START: 0.0
   VX_END: 1.0
-  dirname: ./Data/simulation_stop/
+  datadir: ./Data/simulation_stop/

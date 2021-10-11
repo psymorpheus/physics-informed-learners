@@ -2,26 +2,21 @@ import torch
 import yaml
 import numpy as np
 import pandas as pd
-from mujoco_datagen_artificial import artificial_datagen
+from mujoco_datagen_toy import toy_datagen
 from mujoco_datagen_simulation import simulation_datagen
 from mujoco_dataloader import testloader
 from mujoco_pidnn import pidnn_driver
 
 with open("mujoco_config.yaml", "r") as f:
-    all_config = yaml.safe_load(f)
-    common_config = all_config['COMMON'].copy()
-
-data_configs = ['ARTIFICIAL_NOSTOP', 'ARTIFICIAL_STOP', 'SIMULATION_NOSTOP', 'SIMULATION_STOP']
-model_configs = ['BORDER_O1', 'INTERNAL_O3', 'STRONG_FF', 'WEAK_FF']
-noise_configs = [0.0, 0.01, 0.02, 0.05]
-noise_configs = [0.02]
+    all_configs = yaml.safe_load(f)
+    common_config = all_configs['COMMON'].copy()
 
 def generate_all_datasets():
-    generate_data = False
-    generate_ood = True
+    generate_data = common_config['GENERATE_DATA']
+    generate_ood = common_config['GENERATE_OOD']
 
-    for active_data_config in data_configs:
-        active_data_config = all_config[active_data_config].copy()
+    for active_data_config_name in common_config['DATA_CONFIGS']:
+        active_data_config = all_configs[active_data_config_name].copy()
         active_data_config.update(common_config)
         config = active_data_config
 
@@ -32,8 +27,8 @@ def generate_all_datasets():
         config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
 
         if generate_data:
-            if config['artificial_data']:
-                artificial_datagen(config)
+            if config['toy_data']:
+                toy_datagen(config)
             else:
                 simulation_datagen(config)
 
@@ -43,47 +38,48 @@ def generate_all_datasets():
         config['vx_range'] += config['ood_delta']
 
         if generate_ood:
-            if config['artificial_data']:
-                artificial_datagen(config)
+            if config['toy_data']:
+                toy_datagen(config)
             else:
                 simulation_datagen(config)
 
 # generate_all_datasets()
         
 def train_all_models():
-    for noise in noise_configs:
-        for active_data_config_name in data_configs:
-            active_data_config = all_config[active_data_config_name].copy()
+    for noise in common_config['NOISE_CONFIGS']:
+        for active_data_config_name in common_config['DATA_CONFIGS']:
+            active_data_config = all_configs[active_data_config_name].copy()
             active_data_config.update(common_config)
 
-            for active_model_config_name in model_configs:
-                active_model_config = all_config[active_model_config_name].copy()
+            for active_model_config_name in common_config['MODEL_CONFIGS']:
+                active_model_config = all_configs[active_model_config_name].copy()
                 active_model_config.update(active_data_config)
                 config = active_model_config
 
                 config['vx_range'] = np.linspace(config['VX_START'], config['VX_END'], num = config['VX_VALUES'], dtype=np.float32)
                 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
                 config['noise'] = noise
+                config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name + '/'
 
                 print(f'======================={active_data_config_name}, {active_model_config_name}=======================')
                 pidnn_driver(config)
 
-train_all_models()
+# train_all_models()
 
 def test_all_models():
-    for noise in noise_configs:
+    for noise in common_config['NOISE_CONFIGS']:
         dicts_testdata = []
         dicts_ood = []
 
-        for active_data_config_name in data_configs:
-            active_data_config = all_config[active_data_config_name].copy()
+        for active_data_config_name in common_config['DATA_CONFIGS']:
+            active_data_config = all_configs[active_data_config_name].copy()
             active_data_config.update(common_config)
 
             dict_testdata = dict({})
             dict_ood = dict({})
 
-            for active_model_config_name in model_configs:
-                active_model_config = all_config[active_model_config_name].copy()
+            for active_model_config_name in common_config['MODEL_CONFIGS']:
+                active_model_config = all_configs[active_model_config_name].copy()
                 active_model_config.update(active_data_config)
                 config = active_model_config
 
@@ -93,25 +89,25 @@ def test_all_models():
                 config['vx_range'] = np.linspace(config['VX_START'], config['VX_END'], num = config['VX_VALUES'], dtype=np.float32)
                 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
 
-                model = torch.load(config['dirname'] + config['model_name'] + '_' + str(config['noise']) + '.pt')
+                model = torch.load('Models/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + config['model_name'] + '.pt')
                 model.eval()
 
-                dict_testdata[active_model_config_name] = testloader(config, config['dirname'] + config['datafile'], model).item()
+                dict_testdata[active_model_config_name] = testloader(config, config['datadir'] + config['datafile'], model).item()
 
                 config['datafile'] = 'ood.csv'
                 config['vx_range'] += config['ood_delta']
 
-                dict_ood[active_model_config_name] = testloader(config, config['dirname'] + config['datafile'], model).item()
+                dict_ood[active_model_config_name] = testloader(config, config['datadir'] + config['datafile'], model).item()
             
             dicts_testdata.append(dict_testdata)
             dicts_ood.append(dict_ood)
         
-        df_testdata = pd.DataFrame(dicts_testdata, index = data_configs)
-        df_ood = pd.DataFrame(dicts_ood, index = data_configs)
-        df_testdata.to_csv(f'inferences_testdata_{noise}.csv')
-        df_ood.to_csv(f'inferences_ood_{noise}.csv')
+        df_testdata = pd.DataFrame(dicts_testdata, index = common_config['DATA_CONFIGS'])
+        df_ood = pd.DataFrame(dicts_ood, index = common_config['DATA_CONFIGS'])
+        df_testdata.to_csv('Models/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
+        df_ood.to_csv('Models/Noise_' + f'{int(100*noise)}/' + 'inferences_ood.csv')
 
-# test_all_models()
+test_all_models()
 
 
             

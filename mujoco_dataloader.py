@@ -65,7 +65,7 @@ def dataloader(config, device):
 	N_f = config['num_collocation']
 	N_validation = config['num_validation']
 
-	data = np.genfromtxt(config['dirname'] + config['datafile'], delimiter=',')
+	data = np.genfromtxt(config['datadir'] + config['datafile'], delimiter=',')
 	data = np.array(data, dtype=np.float32)
 
 	assert data.shape[0] == config['TOTAL_ITERATIONS']

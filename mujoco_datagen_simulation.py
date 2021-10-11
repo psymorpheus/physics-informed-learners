@@ -58,7 +58,7 @@ def simulation_datagen(config):
 	collected_data = collected_data[:, 1:]
 
 	if config['save_collected']:
-		np.savetxt(config['dirname'] + config['datafile'], collected_data, delimiter=",")
+		np.savetxt(config['datadir'] + config['datafile'], collected_data, delimiter=",")
 		# sc.savemat(config['filename'] + ".mat", {'collected_data':collected_data})
 
 if __name__=="__main__":

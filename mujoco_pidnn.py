@@ -10,6 +10,7 @@ import mujoco_dataloader as mdl
 
 optimizer = None
 training_history = []		# Has iter, training loss, validation loss
+last_training_loss = None
 
 def plot_history(config, elapsed, error_test):
 	global training_history
@@ -20,14 +21,14 @@ def plot_history(config, elapsed, error_test):
 	plt.clf()
 	plt.plot(epochs, training_loss, color = (63/255, 97/255, 143/255), label='Training loss')
 	plt.plot(epochs, validation_loss, color = (179/255, 89/255, 92/255), label='Validation loss')
-	plt.title('Training and Validation loss (MSE, relative L2)\n' + f'Elapsed: {elapsed:.2f}, Test Error: {error_test:.5f}')
+	plt.title('Training and Validation loss (MSE, relative L2)\n' + f'Elapsed: {elapsed:.2f}, Test Error: {error_test:.5f}, Train Error: {last_training_loss:.5f}')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.legend()
 	# plt.show()
-	savefile_name = 'plot_' + config['model_name'] + '_' + str(config['noise'])
+	savefile_name = 'plot_' + config['model_name']
 	savefile_name += '.png'
-	plt.savefig(config['dirname'] + savefile_name)
+	plt.savefig(config['modeldir'] + savefile_name)
 
 class PINN(nn.Module):
 	
@@ -130,7 +131,7 @@ class PINN(nn.Module):
 		""" Called multiple times by optimizers like Conjugate Gradient and LBFGS.
 		Clears gradients, compute and return the loss.
 		"""
-		
+		global last_training_loss
 		optimizer.zero_grad()
 		loss = self.loss(self.VT_u, self.X_u, self.XT_f)
 		loss.backward()		# To get gradients
@@ -142,6 +143,7 @@ class PINN(nn.Module):
 			validation_loss = mdl.validation_loss(self, self.device).item()
 			training_history.append([self.iter, training_loss, validation_loss])
 			print(training_loss, validation_loss)
+			last_training_loss = training_loss
 
 		return loss
 
@@ -197,10 +199,10 @@ def pidnn_driver(config):
 	print('Test Error: %.5f'  % (error_test))
 
 	"""" For plotting model train and validation errors """
-	plot_history(config, elapsed, error_test)
+	if config['SAVE_PLOT']: plot_history(config, elapsed, error_test)
 
 	""" Saving model for reloading later """
-	torch.save(model, config['dirname'] + config['model_name'] + '_' + str(config['noise']) + '.pt')
+	if config['SAVE_MODEL']: torch.save(model, config['modeldir'] + config['model_name'] + '.pt')
 
 # if __name__ == "__main__": 
 # 	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])
