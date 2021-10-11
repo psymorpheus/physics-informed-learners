@@ -142,7 +142,9 @@ class PINN(nn.Module):
 			training_loss = loss.item()
 			validation_loss = mdl.validation_loss(self, self.device).item()
 			training_history.append([self.iter, training_loss, validation_loss])
-			print(training_loss, validation_loss)
+			print(
+				'Iter %d, Training: %.5e, Validation: %.5e' % (self.iter, training_loss, validation_loss)
+			)
 			last_training_loss = training_loss
 
 		return loss
@@ -177,7 +179,7 @@ def pidnn_driver(config):
 	model.to(device)
 
 	print(model)
-	print("[Training] [Validation]")
+	# print("[Training] [Validation]")
 
 	# L-BFGS Optimizer
 
