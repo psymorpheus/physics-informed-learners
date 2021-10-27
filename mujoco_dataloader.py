@@ -68,7 +68,10 @@ def dataloader(config, device):
 	data = np.genfromtxt(config['datadir'] + config['datafile'], delimiter=',')
 	data = np.array(data, dtype=np.float32)
 
-	assert data.shape[0] == config['TOTAL_ITERATIONS']
+	if data.shape[0] == config['TOTAL_ITERATIONS'] + 1:
+		''' Simulation data annotated with velocities '''
+		config['vx_range'] = data[0]
+		data = data[1:, :]
 	assert data.shape[1] == config['vx_range'].shape[0]
 
 	vrange = config['vx_range']
@@ -83,10 +86,10 @@ def dataloader(config, device):
 	lb = np.min(VT_true, axis=0)
 	ub = np.max(VT_true, axis=0)
 
-	if config['training_is_border']:
-		VT_indices = np.arange(VT_true.shape[0])
-		VT_basecase_indices = VT_indices[np.logical_or(VT_true[:,0] == 0, VT_true[:,1] == 0)]
+	VT_indices = np.arange(VT_true.shape[0])
+	VT_basecase_indices = VT_indices[np.logical_or(np.abs(VT_true[:,0]) < 1e-6, np.abs(VT_true[:,1]) < 1e-6)]    # Put some margins not kept exact 0
 
+	if config['training_is_border']:
 		idx_train = VT_basecase_indices[np.random.choice(VT_basecase_indices.shape[0], min(N_u, VT_basecase_indices.shape[0]), replace=False)]
 		VT_u_train = VT_true[idx_train, :]
 		X_u_train = X_true[idx_train, :]
@@ -105,7 +108,7 @@ def dataloader(config, device):
 
 	if N_f > 0:
 		VT_f_train = lb + (ub-lb)*lhs(2, N_f)
-		VT_f_train = np.vstack((VT_f_train, VT_u_train))
+		VT_f_train = np.vstack((VT_f_train, VT_true[VT_basecase_indices, :]))     # Taken all basecase points in collocation as well
 	else:
 		VT_f_train = VT_u_train
 
@@ -148,6 +151,10 @@ def testloader(config, testfile, model):
 
 	data = np.genfromtxt(testfile, delimiter=',')
 	data = np.array(data, dtype=np.float32)
+
+	if data.shape[0] == config['t_range'].shape[0] + 1:
+		config['vx_range'] = data[0, :]
+		data = data[1:, :]
 
 	vrange = config['vx_range']
 	trange = config['t_range']

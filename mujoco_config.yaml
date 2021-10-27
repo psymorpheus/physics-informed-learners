@@ -7,16 +7,16 @@ COMMON:
   ood_delta: 1.5
   noise: 0.05
 
-  TIMESTEP: 0.004 # 0.002 * 20
+  TIMESTEP: 0.04 # 0.002 * 20
   datafile: data.csv
   oodfile: ood.csv
 
   GENERATE_DATA: True
   GENERATE_OOD: True
 
-  MODEL_CONFIGS: [BORDER_O1, INTERNAL_O3, WEAK_FF]
+  MODEL_CONFIGS: [INTERNAL_O3_100, INTERNAL_O3_200, INTERNAL_O3_400, WEAK_FF_100, WEAK_FF_200, WEAK_FF_400]
   DATA_CONFIGS: [TOY_NOSTOP, TOY_STOP, SIMULATION_NOSTOP, SIMULATION_STOP]
-  NOISE_CONFIGS: [0.00, 0.01, 0.02, 0.05]
+  NOISE_CONFIGS: [0.00, 0.05]
 
   SAVE_PLOT: True
   SAVE_MODEL: True
@@ -35,11 +35,27 @@ BORDER_O1:
   num_collocation: 1000
   differential_order: 1
 
-INTERNAL_O3:
-  model_name: internal_o3
+INTERNAL_O3_100:
+  model_name: internal_o3_100
+  training_is_border: False
+  take_differential_points: True
+  num_datadriven: 100
+  num_collocation: 1000
+  differential_order: 3
+
+INTERNAL_O3_200:
+  model_name: internal_o3_200
   training_is_border: False
   take_differential_points: True
   num_datadriven: 200
+  num_collocation: 1000
+  differential_order: 3
+
+INTERNAL_O3_400:
+  model_name: internal_o3_400
+  training_is_border: False
+  take_differential_points: True
+  num_datadriven: 400
   num_collocation: 1000
   differential_order: 3
 
@@ -50,11 +66,25 @@ STRONG_FF:
   num_datadriven: 1200
   num_collocation: 0
 
-WEAK_FF:
-  model_name: weak_ff
+WEAK_FF_100:
+  model_name: weak_ff_100
+  training_is_border: False
+  take_differential_points: False
+  num_datadriven: 100
+  num_collocation: 0
+
+WEAK_FF_200:
+  model_name: weak_ff_200
   training_is_border: False
   take_differential_points: False
   num_datadriven: 200
+  num_collocation: 0
+
+WEAK_FF_400:
+  model_name: weak_ff_400
+  training_is_border: False
+  take_differential_points: False
+  num_datadriven: 400
   num_collocation: 0
 
 # DATA CONFIGS
@@ -96,5 +126,5 @@ SIMULATION_STOP:
   TOTAL_ITERATIONS: 1000
   VX_VALUES: 20
   VX_START: 0.0
-  VX_END: 1.0
+  VX_END: 3.0
   datadir: ./Data/simulation_stop/

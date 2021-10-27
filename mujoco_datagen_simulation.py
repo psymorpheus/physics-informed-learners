@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 def simulation_datagen(config):
 	# Final shape of collected data is (config['TOTAL_ITERATIONS'], V_VALUES)
-	collected_data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
+	collected_data = np.zeros(shape=(len(config['t_range']) + 1,1), dtype=np.float32)
 
 	for vx in tqdm(config['vx_range'], desc = 'Simulation data generation progress'):
 		obj_init = np.array([vx,0.0], dtype=np.float32)
@@ -24,11 +24,11 @@ def simulation_datagen(config):
 		if config['save_debug']:
 			debug_data = np.array([np.hstack([[0],initial_obj_pos,initial_obj_vel,initial_obj_rvel,[initial_obj_vel[1]/initial_obj_vel[0]]])])
 
-		data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
+		data = np.zeros(shape=(len(config['t_range']) + 1, 1), dtype=np.float32)
 
 		iter += 1
 
-		while (iter<len(config['t_range'])):
+		while (iter<len(config['t_range']) + 1):
 				if config['render']:
 					env.render(mode="human")
 				obs, reward, done, info = env.step(defStep)
@@ -36,6 +36,11 @@ def simulation_datagen(config):
 				obj_pos = obs["observation"][3:6]
 				obj_vel = obs["observation"][14:17]
 				obj_rvel = obs["observation"][17:20]
+				if iter==1:
+					''' Annotating with velocity value '''
+					data[0][0] = obj_vel[0]/config['TIMESTEP'] # Because simulator returns this multiplied by dt
+					initial_obj_pos = obj_pos
+
 				data[iter][0] = obj_pos[0] - initial_obj_pos[0]
 
 				if config['save_debug']:

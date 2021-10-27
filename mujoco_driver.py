@@ -1,3 +1,5 @@
+from posixpath import join
+from matplotlib.pyplot import jet
 import torch
 import yaml
 import numpy as np
@@ -6,10 +8,34 @@ from mujoco_datagen_toy import toy_datagen
 from mujoco_datagen_simulation import simulation_datagen
 from mujoco_dataloader import testloader
 from mujoco_pidnn import pidnn_driver
+import os
 
 with open("mujoco_config.yaml", "r") as f:
     all_configs = yaml.safe_load(f)
     common_config = all_configs['COMMON'].copy()
+
+def generate_folders():
+    datadir = './Data'
+    for filename in common_config['DATA_CONFIGS']:
+        path = os.path.join(datadir, filename.lower())
+        try:
+            os.makedirs(path, exist_ok = True)
+            print("Successfully created '%s'" % (datadir+filename.lower()))
+        except OSError as error:
+            print("'%s' can not be created" % (datadir+filename.lower()))
+    modeldir = './Models'
+    for noise in common_config['NOISE_CONFIGS']:
+        noisedir = f'Noise_{int(100*noise)}'
+        for filename in common_config['DATA_CONFIGS']:
+            path = os.path.join(modeldir, noisedir + '/' + filename.lower())
+            try:
+                os.makedirs(path, exist_ok = True)
+                print("Successfully created '%s'" % (modeldir + '/' + noisedir + '/' + filename.lower()))
+            except OSError as error:
+                print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
+    print('Successfully created all directories!')
+
+# generate_folders()
 
 def generate_all_datasets():
     generate_data = common_config['GENERATE_DATA']
@@ -52,6 +78,10 @@ def train_all_models():
             active_data_config.update(common_config)
 
             for active_model_config_name in common_config['MODEL_CONFIGS']:
+                if os.path.isfile(f'./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt'):
+                    print(f'======================= Skipping ./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt =======================')
+                    continue
+
                 active_model_config = all_configs[active_model_config_name].copy()
                 active_model_config.update(active_data_config)
                 config = active_model_config

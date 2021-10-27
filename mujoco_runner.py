@@ -10,9 +10,9 @@ with open("mujoco_config.yaml", "r") as f:
     all_configs = yaml.safe_load(f)
     common_config = all_configs['COMMON'].copy()
 
-active_data_config_name = 'SIMULATION_NOSTOP'
-active_model_config_name = 'INTERNAL_O3'
-noise = 0.02
+active_data_config_name = 'SIMULATION_STOP'
+active_model_config_name = 'WEAK_FF'
+noise = 0.01
 
 active_data_config = all_configs[active_data_config_name].copy()
 active_data_config.update(common_config)
@@ -29,4 +29,4 @@ config['SAVE_PLOT'] = False
 config['SAVE_MODEL'] = False
 
 pidnn_driver(config)
-pidnn_driver_advanced(config)
+# pidnn_driver_advanced(config)
