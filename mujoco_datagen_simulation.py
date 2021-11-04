@@ -9,6 +9,8 @@ from tqdm import tqdm
 def simulation_datagen(config):
 	# Final shape of collected data is (config['TOTAL_ITERATIONS'], V_VALUES)
 	collected_data = np.zeros(shape=(len(config['t_range']) + 1,1), dtype=np.float32)
+	collected_data[0, 0] = -np.inf
+	collected_data[1:, 0] = config['t_range']	# Annotating with t values
 
 	for vx in tqdm(config['vx_range'], desc = 'Simulation data generation progress'):
 		obj_init = np.array([vx,0.0], dtype=np.float32)
@@ -59,8 +61,6 @@ def simulation_datagen(config):
 			np.savetxt(filename + ".csv", debug_data, delimiter=",")
 			# sc.savemat(filename + ".mat", {'debug_data':debug_data})
 
-	# To remove starting pad of zeros
-	collected_data = collected_data[:, 1:]
 
 	if config['save_collected']:
 		np.savetxt(config['datadir'] + config['datafile'], collected_data, delimiter=",")

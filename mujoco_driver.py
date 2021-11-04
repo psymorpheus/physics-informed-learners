@@ -38,38 +38,24 @@ def generate_folders():
 # generate_folders()
 
 def generate_all_datasets():
-    generate_data = common_config['GENERATE_DATA']
-    generate_ood = common_config['GENERATE_OOD']
-
     for active_data_config_name in common_config['DATA_CONFIGS']:
         active_data_config = all_configs[active_data_config_name].copy()
         active_data_config.update(common_config)
         config = active_data_config
 
-        # For normal data generation
+        for datatype in ['TRAIN', 'TEST']:
+            # For generating training data and testing data in one go
 
-        config['datafile'] = 'data.csv'
-        config['vx_range'] = np.linspace(config['VX_START'], config['VX_END'], num = config['VX_VALUES'], dtype=np.float32)
-        config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
+            config['datafile'] = config[datatype+'FILE']
+            config['vx_range'] = np.linspace(config[datatype+'_VX_START'], config[datatype+'_VX_END'], num = config[datatype+'_VX_VALUES'], dtype=np.float32)
+            config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config[datatype+'_ITERATIONS'], step = config['TIMESTEP'])
 
-        if generate_data:
             if config['toy_data']:
                 toy_datagen(config)
             else:
                 simulation_datagen(config)
 
-        # For ood generation
-
-        config['datafile'] = 'ood.csv'
-        config['vx_range'] += config['ood_delta']
-
-        if generate_ood:
-            if config['toy_data']:
-                toy_datagen(config)
-            else:
-                simulation_datagen(config)
-
-# generate_all_datasets()
+generate_all_datasets()
         
 def train_all_models():
     for noise in common_config['NOISE_CONFIGS']:
@@ -137,7 +123,7 @@ def test_all_models():
         df_testdata.to_csv('Models/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
         df_ood.to_csv('Models/Noise_' + f'{int(100*noise)}/' + 'inferences_ood.csv')
 
-test_all_models()
+# test_all_models()
 
 
             

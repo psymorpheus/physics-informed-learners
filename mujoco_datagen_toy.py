@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.core.fromnumeric import reshape
+from numpy.core.fromnumeric import reshape, shape
 from numpy.lib.function_base import append
 import scipy.io as sc
 import time
@@ -7,7 +7,8 @@ from tqdm import tqdm
 
 def toy_datagen(config):
 	# Final shape of collected data is (config['TOTAL_ITERATIONS'], V_VALUES)
-	collected_data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
+	# collected_data = np.zeros(shape=(len(config['t_range']),1), dtype=np.float32)
+	collected_data = np.array(config['t_range']).reshape((len(config['t_range']),1))
 
 	for vx in tqdm(config['vx_range'], desc = 'Toy data generation progress'):
 		data = np.zeros((len(config['t_range']),1), dtype=np.float32)
@@ -22,8 +23,9 @@ def toy_datagen(config):
 
 		collected_data = np.hstack([collected_data, data])
 
-	# To remove starting pad of zeros
-	collected_data = collected_data[:, 1:]
+	collected_data = np.vstack([np.zeros(shape=(1,1+len(config['vx_range']))), collected_data])
+	collected_data[0, 0] = -np.inf
+	collected_data[0, 1:] = config['vx_range']
 
 	if config['save_collected']:
 		np.savetxt(config['datadir'] + config['datafile'], collected_data, delimiter=",")
