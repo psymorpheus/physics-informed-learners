@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from mujoco_dataloader import testloader
 from mujoco_pidnn import pidnn_driver
-from mujoco_pidnn_advanced import pidnn_driver_advanced
 
 with open("mujoco_config.yaml", "r") as f:
     all_configs = yaml.safe_load(f)
