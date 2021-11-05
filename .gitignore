@@ -20,3 +20,5 @@ __pycache__/
 collected_data*
 debug_data-*
 physics-informed-learners-models/
+Data/
+Models/

@@ -6,6 +6,8 @@ if len(sys.argv)<2:
     print("Please enter datafile to analyse")
     sys.exit(1)
 
+EPS = 1e-7
+
 for filename in sys.argv[1:]:
     data = np.genfromtxt(filename, dtype=np.float32, delimiter=',')
     vx_range = data[0, 1:]
@@ -16,8 +18,8 @@ for filename in sys.argv[1:]:
     num_t = t_range.shape[0]
 
     print(filename)
-    print("VX_RANGE:", vx_range)
-    print("T_RANGE:", t_range)
+    print("VX_RANGE:", [vx_range[0], vx_range[-1]])
+    print("T_RANGE:", [t_range[0], t_range[-1]])
     print("NUM_VX:", num_vx)
     print("NUM_T:", num_t)
     print("DATASIZE:", num_vx*num_t)
@@ -26,12 +28,12 @@ for filename in sys.argv[1:]:
     total_points = (num_t-1) * np.ones(shape=num_vx, dtype=np.int32)
     for i in range(num_vx):
         for j in range(1, num_t):
-            if(data[j][i]==data[j-1][i]):
+            if(abs(data[j][i]-data[j-1][i])<EPS):
                 stopped_points[i] = num_t-j
                 break
     print("NUM_STOPPED:", stopped_points)
     print("PERCENTAGE_STOPPED:", 100*stopped_points/total_points)
-
+    print("TOTAL_PERCENTAGE_STOPPED:", 100*(sum(stopped_points)/sum(total_points)))
     print("-----------------------------------------")
 
 # x = input()

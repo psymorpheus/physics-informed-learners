@@ -1,5 +1,3 @@
-from posixpath import join
-from matplotlib.pyplot import jet
 import torch
 import yaml
 import numpy as np
@@ -35,7 +33,7 @@ def generate_folders():
                 print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
     print('Successfully created all directories!')
 
-generate_folders()
+# generate_folders()
 
 def generate_all_datasets():
     for active_data_config_name in common_config['DATA_CONFIGS']:
@@ -43,7 +41,7 @@ def generate_all_datasets():
         active_data_config.update(common_config)
         config = active_data_config
 
-        for datatype in ['TRAIN', 'TEST']:
+        for datatype in ['TRAIN', 'TEST'][0:1]:
             # For generating training data and testing data in one go
 
             config['datafile'] = config[datatype+'FILE']
@@ -55,7 +53,7 @@ def generate_all_datasets():
             else:
                 simulation_datagen(config)
 
-# generate_all_datasets()
+generate_all_datasets()
         
 def train_all_models():
     for noise in common_config['NOISE_CONFIGS']:

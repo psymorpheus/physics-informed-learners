@@ -38,6 +38,7 @@ def simulation_datagen(config):
 				obj_pos = obs["observation"][3:6]
 				obj_vel = obs["observation"][14:17]
 				obj_rvel = obs["observation"][17:20]
+				if (obj_pos[2]-initial_obj_pos[2])>0.1: print("PUCK FELL DOWN THE TABLE!")
 				if iter==1:
 					''' Annotating with velocity value '''
 					data[0][0] = obj_vel[0]/config['TIMESTEP'] # Because simulator returns this multiplied by dt
