@@ -35,7 +35,7 @@ def generate_folders():
                 print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
     print('Successfully created all directories!')
 
-# generate_folders()
+generate_folders()
 
 def generate_all_datasets():
     for active_data_config_name in common_config['DATA_CONFIGS']:
@@ -55,7 +55,7 @@ def generate_all_datasets():
             else:
                 simulation_datagen(config)
 
-generate_all_datasets()
+# generate_all_datasets()
         
 def train_all_models():
     for noise in common_config['NOISE_CONFIGS']:
