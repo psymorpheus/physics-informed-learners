@@ -13,8 +13,8 @@ tsteps = int(input('Enter number of timesteps: '))
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-active_data_config_name = 'SIMULATION_STOP'
-active_model_config_name = 'WEAK_FF'
+active_data_config_name = 'TOY_NOSTOP'
+active_model_config_name = 'WEAK_FF_400'
 noise = 0.00
 
 active_data_config = all_config[active_data_config_name].copy()
@@ -83,4 +83,5 @@ plt.title('Simulated and Predicted positions\n')
 plt.xlabel('Time')
 plt.ylabel('Displacement')
 plt.legend()
-plt.show()
+# plt.show()
+plt.savefig('dummy.png')

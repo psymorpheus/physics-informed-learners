@@ -7,6 +7,7 @@ from mujoco_datagen_simulation import simulation_datagen
 from mujoco_dataloader import testloader
 from mujoco_pidnn import pidnn_driver
 import os
+import sys
 
 with open("mujoco_config.yaml", "r") as f:
     all_configs = yaml.safe_load(f)
@@ -41,19 +42,35 @@ def generate_all_datasets():
         active_data_config.update(common_config)
         config = active_data_config
 
-        for datatype in ['TRAIN', 'TEST'][0:1]:
-            # For generating training data and testing data in one go
+        config['datafile'] = config['TRAINFILE']
+        config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
+        config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
 
-            config['datafile'] = config[datatype+'FILE']
-            config['vx_range'] = np.linspace(config[datatype+'_VX_START'], config[datatype+'_VX_END'], num = config[datatype+'_VX_VALUES'], dtype=np.float32)
-            config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config[datatype+'_ITERATIONS'], step = config['TIMESTEP'])
+        if config['DATASET_CACHING'] and os.path.isfile(config['datadir']+config['datafile']):
+            print('Skipping ' + config['datadir'] + config['datafile'])
+        else:
+            if config['toy_data']:
+                toy_datagen(config)
+            else:
+                simulation_datagen(config)
+        
+        config['datafile'] = config['TESTFILE']
+        new_vx_range = []
+        for i in range(len(config['vx_range'])-1):
+            middle_range = np.linspace(config['vx_range'][i], config['vx_range'][i+1], num=2+config['TESTSET_MULTIPLIER'], dtype=np.float32)
+            new_vx_range.append(middle_range[1:-1])
+        config['vx_range'] = np.array(new_vx_range).reshape((-1,))
 
+        if config['DATASET_CACHING'] and os.path.isfile(config['datadir']+config['datafile']):
+            print('Skipping ' + config['datadir'] + config['datafile'])
+        else:
             if config['toy_data']:
                 toy_datagen(config)
             else:
                 simulation_datagen(config)
 
-generate_all_datasets()
+
+# generate_all_datasets()
         
 def train_all_models():
     for noise in common_config['NOISE_CONFIGS']:
@@ -62,7 +79,7 @@ def train_all_models():
             active_data_config.update(common_config)
 
             for active_model_config_name in common_config['MODEL_CONFIGS']:
-                if os.path.isfile(f'./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt'):
+                if common_config['MODEL_CACHING'] and os.path.isfile(f'./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt'):
                     print(f'======================= Skipping ./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt =======================')
                     continue
 
@@ -70,10 +87,11 @@ def train_all_models():
                 active_model_config.update(active_data_config)
                 config = active_model_config
 
-                config['vx_range'] = np.linspace(config['VX_START'], config['VX_END'], num = config['VX_VALUES'], dtype=np.float32)
-                config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
+                config['datafile'] = config['TESTFILE']
+                config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
+                config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
                 config['noise'] = noise
-                config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name + '/'
+                config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name.lower() + '/'
 
                 print(f'======================={active_data_config_name}, {active_model_config_name}=======================')
                 pidnn_driver(config)
@@ -100,13 +118,13 @@ def test_all_models():
                 config['noise'] = noise
 
                 config['datafile'] = 'data.csv'
-                config['vx_range'] = np.linspace(config['VX_START'], config['VX_END'], num = config['VX_VALUES'], dtype=np.float32)
-                config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TOTAL_ITERATIONS'], step = config['TIMESTEP'])
+                config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
+                config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
 
                 model = torch.load('Models/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + config['model_name'] + '.pt')
                 model.eval()
 
-                dict_testdata[active_model_config_name] = testloader(config, config['datadir'] + config['datafile'], model).item()
+                dict_testdata[active_model_config_name] = round(testloader(config, config['datadir'] + config['datafile'], model).item(), 2)
 
                 config['datafile'] = 'ood.csv'
                 config['vx_range'] += config['ood_delta']
@@ -123,5 +141,17 @@ def test_all_models():
 
 # test_all_models()
 
-
+if __name__=="__main__":
+    command = sys.argv[1]
+    if command == 'folders':
+        generate_folders()
+    elif command == 'datasets':
+        generate_all_datasets()
+    elif command == 'train':
+        train_all_models()
+    elif command == 'test':
+        test_all_models()
+    else:
+        print('Please input valid keyword')
+        sys.exit(1)
             

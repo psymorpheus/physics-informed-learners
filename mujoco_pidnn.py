@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import argmin
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -12,16 +13,16 @@ optimizer = None
 training_history = []		# Has iter, training loss, validation loss
 last_training_loss = None
 
-def plot_history(config, elapsed, error_test):
+def plot_history(id, config, elapsed, error_validation):
 	global training_history
-	training_history = np.array(training_history)
+	training_history = np.array(training_history[id])
 	epochs = training_history[:, 0].ravel()
 	training_loss = training_history[:, 1].ravel()
 	validation_loss = training_history[:, 2].ravel()
 	plt.clf()
 	plt.plot(epochs, training_loss, color = (63/255, 97/255, 143/255), label='Training loss')
 	plt.plot(epochs, validation_loss, color = (179/255, 89/255, 92/255), label='Validation loss')
-	plt.title('Training and Validation loss (MSE, relative L2)\n' + f'Elapsed: {elapsed:.2f}, Test Error: {error_test:.5f}, Train Error: {last_training_loss:.5f}')
+	plt.title('Training and Validation loss (MSE, relative MSE)\n' + f'Elapsed: {elapsed:.2f}, Validation Error: {error_validation:.5f}, Train Error: {last_training_loss:.5f}')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.legend()
@@ -32,16 +33,18 @@ def plot_history(config, elapsed, error_test):
 
 class PINN(nn.Module):
 	
-	def __init__(self, VT_u, X_u, VT_f, layers, lb, ub, device, config):
+	def __init__(self, id, VT_u, X_u, VT_f, layers, lb, ub, device, config, alpha):
 		""" For better comments refer to Burgers-PINN/myBurgers.py """
 
 		super().__init__()
 		
+		self.id = id
 		self.device = device
 		self.config = config
 
 		self.u_b = ub
 		self.l_b = lb
+		self.alpha = alpha
 	   
 		self.VT_u = VT_u
 		self.X_u = X_u
@@ -123,7 +126,7 @@ class PINN(nn.Module):
 			loss_f = self.loss_PDE(VT_f_train)
 		else:
 			loss_f = 0
-		loss_val = loss_u + loss_f
+		loss_val = loss_u + self.alpha * loss_f
 		
 		return loss_val
 
@@ -140,8 +143,8 @@ class PINN(nn.Module):
 
 		if self.iter % 100 == 0:
 			training_loss = loss.item()
-			validation_loss = mdl.validation_loss(self, self.device).item()
-			training_history.append([self.iter, training_loss, validation_loss])
+			validation_loss = mdl.set_loss(self, self.device).item()
+			training_history[self.id].append([self.iter, training_loss, validation_loss])
 			print(
 				'Iter %d, Training: %.5e, Validation: %.5e' % (self.iter, training_loss, validation_loss)
 			)
@@ -152,19 +155,19 @@ class PINN(nn.Module):
 
 def pidnn_driver(config):
 	global training_history
-	training_history = []
+	training_history = [[] for i in config['ALPHA']]
 
 	N_u = config['num_datadriven']
 	N_f = config['num_collocation']
 	num_layers = config['num_layers']
 	num_neurons = config['neurons_per_layer']
-	N_validation = config['num_validation']
 
 	torch.set_default_dtype(torch.float)
 	torch.manual_seed(1234)
 	np.random.seed(1234)
 
-	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	device = 'cpu'	# set as cpu for more parallel training
 
 	print("Running this on", device)
 	if device == 'cuda': 
@@ -174,44 +177,56 @@ def pidnn_driver(config):
 	layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
 	VT_u_train, u_train, VT_f_train, lb, ub = mdl.dataloader(config, device)
-		
-	model = PINN(VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config)
-	model.to(device)
 
-	print(model)
-	# print("[Training] [Validation]")
-
-	# L-BFGS Optimizer
-
-	global optimizer
-	optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
-								max_iter = 50000,
-								tolerance_grad = 1.0 * np.finfo(float).eps, 
-								tolerance_change = 1.0 * np.finfo(float).eps, 
-								history_size = 100)
-	# optimizer = torch.optim.LBFGS(
-	# 	model.parameters(), 
-	# 	lr=0.01, 
-	# 	max_iter=50000, 
-	# 	max_eval=50000, 
-	# 	history_size=50,
-	# 	tolerance_grad=1.0 * np.finfo(float).eps, 
-	# 	tolerance_change=1.0 * np.finfo(float).eps,
-	# 	line_search_fn="strong_wolfe"       # can be "strong_wolfe"
-	# )
+	models = []
+	validation_losses = []
 	
-	start_time = time.time()
-	optimizer.step(model.closure)		# Does not need any loop like Adam
-	elapsed = time.time() - start_time                
-	print('Training time: %.2f' % (elapsed))
+	if not config['take_differential_points']:
+		num_alpha = 1
+	else:
+		num_alpha = len(config['ALPHA'])
 
+	for i in range(num_alpha):
+		alpha = config['ALPHA'][i]
+		model = PINN(i, VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config, alpha)
+		model.to(device)
+
+		print(model)
+
+		# L-BFGS Optimizer
+		global optimizer
+		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
+									max_iter = 50000,
+									tolerance_grad = 1.0 * np.finfo(float).eps, 
+									tolerance_change = 1.0 * np.finfo(float).eps, 
+									history_size = 100)
+		# optimizer = torch.optim.LBFGS(
+		# 	model.parameters(), 
+		# 	lr=0.01, 
+		# 	max_iter=50000, 
+		# 	max_eval=50000, 
+		# 	history_size=50,
+		# 	tolerance_grad=1.0 * np.finfo(float).eps, 
+		# 	tolerance_change=1.0 * np.finfo(float).eps,
+		# 	line_search_fn="strong_wolfe"       # can be "strong_wolfe"
+		# )
+		
+		start_time = time.time()
+		optimizer.step(model.closure)		# Does not need any loop like Adam
+		elapsed = time.time() - start_time                
+		print('Training time: %.2f' % (elapsed))
+
+		models.append(model)
+		validation_losses.append(mdl.set_loss(model, device).item())
+
+	model = models[argmin(validation_losses)] # choosing best model out of the bunch
 
 	""" Model Accuracy """ 
-	error_test = mdl.testset_loss(model, device).item()
-	print('Test Error: %.5f'  % (error_test))
+	error_validation = mdl.set_loss(model, device).item()
+	print('Validation Error: %.5f'  % (error_validation))
 
 	"""" For plotting model train and validation errors """
-	if config['SAVE_PLOT']: plot_history(config, elapsed, error_test)
+	if config['SAVE_PLOT']: plot_history(model.id, config, elapsed, error_validation)
 
 	""" Saving model for reloading later """
 	if config['SAVE_MODEL']: torch.save(model, config['modeldir'] + config['model_name'] + '.pt')

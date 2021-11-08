@@ -44,17 +44,30 @@ X_validation = None
 # 		total_error = total_error/total
 # 	return total_error
 
-def validation_loss(model, device):
-	with torch.no_grad():
-		X_pred = model.forward(VT_validation)
-	error_vec = torch.linalg.norm((X_validation-X_pred),2)/torch.linalg.norm(X_validation,2)		# Relative L2 Norm of the error (Vector)
-	return error_vec
+def set_loss(model, device, data = None, X = None):
+	# Returns relative MSE
+	if data is None:
+		data = VT_validation
+		X = X_validation
+	error = 0
+	actual = 0
+	batch_size = 128
+	size = X.shape[0]
+	for i in range(0, size, batch_size):
+		batch_data = data[i:min(i+batch_size,size), :]
+		batch_X = X[i:min(i+batch_size,size), :]
+		with torch.no_grad():
+			X_pred = model.forward(batch_data)
+		error += torch.sum((X_pred-batch_X)**2)/batch_X.shape[0]
+		actual += torch.sum((batch_data)**2)/batch_data.shape[0]
+		
+	return error/actual
 
-def testset_loss(model, device):
-	with torch.no_grad():
-		X_pred = model.forward(VT_test)
-	error_vec = torch.linalg.norm((X_test-X_pred),2)/torch.linalg.norm(X_test,2)		# Relative L2 Norm of the error (Vector)
-	return error_vec
+# def testset_loss(model, device):
+# 	with torch.no_grad():
+# 		X_pred = model.forward(VT_test)
+# 	error_vec = torch.linalg.norm((X_test-X_pred),2)/torch.linalg.norm(X_test,2)		# Relative L2 Norm of the error (Vector)
+# 	return error_vec
 
 def dataloader(config, device):
 	""" N_u = training data / boundary points for data driven training
@@ -63,20 +76,13 @@ def dataloader(config, device):
 
 	N_u = config['num_datadriven']
 	N_f = config['num_collocation']
-	N_validation = config['num_validation']
 
 	data = np.genfromtxt(config['datadir'] + config['datafile'], delimiter=',')
 	data = np.array(data, dtype=np.float32)
 
-	if data.shape[0] == config['TOTAL_ITERATIONS'] + 1:
-		''' Simulation data annotated with velocities '''
-		config['vx_range'] = data[0]
-		data = data[1:, :]
-	assert data.shape[1] == config['vx_range'].shape[0]
-
-	vrange = config['vx_range']
-	trange = config['t_range']
-	xrange = data
+	vrange = data[0, 1:]
+	trange = data[1:, 0]
+	xrange = data[1:, 1:]
 
 	V, T = np.meshgrid(vrange,trange)
 	VT_true = np.hstack((V.flatten()[:,None], T.flatten()[:,None]))
@@ -126,7 +132,8 @@ def dataloader(config, device):
 	VT_test = np.delete(VT_true, idx_train, axis=0)
 	X_test = np.delete(X_true, idx_train, axis=0)
 
-	idx_validation = np.random.choice(VT_test.shape[0], N_validation, replace=False)
+	# Takes all the remaining points for validation
+	idx_validation = np.random.choice(VT_test.shape[0], VT_test.shape[0], replace=False)
 	VT_validation = VT_test[idx_validation, :]
 	X_validation = X_test[idx_validation, :]
 	VT_test = np.delete(VT_test, idx_validation, axis=0)
@@ -152,13 +159,9 @@ def testloader(config, testfile, model):
 	data = np.genfromtxt(testfile, delimiter=',')
 	data = np.array(data, dtype=np.float32)
 
-	if data.shape[0] == config['t_range'].shape[0] + 1:
-		config['vx_range'] = data[0, :]
-		data = data[1:, :]
-
-	vrange = config['vx_range']
-	trange = config['t_range']
-	xrange = data
+	vrange = data[0, 1:]
+	trange = data[1:, 0]
+	xrange = data[1:, 1:]
 
 	V, T = np.meshgrid(vrange,trange)
 	VT_test = np.hstack((V.flatten()[:,None], T.flatten()[:,None]))
@@ -169,11 +172,7 @@ def testloader(config, testfile, model):
 	X_test = torch.from_numpy(X_test).float().to(device)
 	model.to(device)
 
-	with torch.no_grad():
-		X_pred = model.forward(VT_test)
-	error_vec = torch.linalg.norm((X_test-X_pred),2)/torch.linalg.norm(X_test,2)		# Relative L2 Norm of the error (Vector)
-
-	return error_vec
+	return set_loss(model, device, VT_test, X_test)
 
 if __name__=="__main__":
   print("Please call this from pidnn file.")
