@@ -5,21 +5,29 @@ import yaml
 import matplotlib.pyplot as plt
 
 with open("mujoco_config.yaml", "r") as f:
-    all_config = yaml.safe_load(f)
-    common_config = all_config['COMMON'].copy()
+    all_configs = yaml.safe_load(f)
+    common_config = all_configs['COMMON'].copy()
+    # Filling in models from model templates
+    for instance in common_config['ALL_MODEL_CONFIGS']:
+        template_name = instance[:instance.rfind('_')]
+        training_points = int(instance[(instance.rfind('_')+1):])
+        template_config = all_configs[template_name].copy()
+        template_config['num_datadriven'] = training_points
+        template_config['model_name'] = template_name.lower() + '_' + str(training_points)
+        all_configs[template_name + '_' + str(training_points)] = template_config
 
 vx = float(input('Enter initial velocity: '))
 tsteps = int(input('Enter number of timesteps: '))
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-active_data_config_name = 'TOY_NOSTOP'
-active_model_config_name = 'WEAK_FF_400'
+active_data_config_name = 'TOY_00_03'
+active_model_config_name = 'PIDNN_400'
 noise = 0.00
 
-active_data_config = all_config[active_data_config_name].copy()
+active_data_config = all_configs[active_data_config_name].copy()
 active_data_config.update(common_config)
-active_model_config = all_config[active_model_config_name].copy()
+active_model_config = all_configs[active_model_config_name].copy()
 active_model_config.update(active_data_config)
 config = active_model_config
 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*tsteps, step = config['TIMESTEP'])

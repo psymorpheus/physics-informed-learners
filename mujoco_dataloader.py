@@ -53,6 +53,7 @@ def set_loss(model, device, data = None, X = None):
 	actual = 0
 	batch_size = 128
 	size = X.shape[0]
+	if size<3000: batch_size = size
 	for i in range(0, size, batch_size):
 		batch_data = data[i:min(i+batch_size,size), :]
 		batch_X = X[i:min(i+batch_size,size), :]
@@ -132,8 +133,8 @@ def dataloader(config, device):
 	VT_test = np.delete(VT_true, idx_train, axis=0)
 	X_test = np.delete(X_true, idx_train, axis=0)
 
-	# Takes all the remaining points for validation
-	idx_validation = np.random.choice(VT_test.shape[0], VT_test.shape[0], replace=False)
+	# Takes validation and training in 1:1 ratio
+	idx_validation = np.random.choice(VT_test.shape[0], N_u, replace=False)
 	VT_validation = VT_test[idx_validation, :]
 	X_validation = X_test[idx_validation, :]
 	VT_test = np.delete(VT_test, idx_validation, axis=0)

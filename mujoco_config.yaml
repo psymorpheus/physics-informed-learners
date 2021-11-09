@@ -1,26 +1,169 @@
 COMMON:
   save_collected: True
-  num_layers: 8
-  neurons_per_layer: 20
 
   TIMESTEP: 0.04 # 0.002 * 20
   TRAINFILE: train.csv
   TESTFILE: test.csv
-  TESTSET_MULTIPLIER: 1 # |Trainset| = |Trainset|*multiplier
+  TESTSET_MULTIPLIER: 2 # |Trainset| = |Trainset|*multiplier
 
-  ALL_MODEL_CONFIGS: [INTERNAL_O3_100, INTERNAL_O3_200, INTERNAL_O3_400, WEAK_FF_100, WEAK_FF_200, WEAK_FF_400]
-  ALL_DATA_CONFIGS: [TOY_NOSTOP, TOY_HIGHSTOP, TOY_MIXED, SIMULATION_NOSTOP, SIMULATION_HIGHSTOP, SIMULATION_MIXED]
+  ALL_MODEL_CONFIGS: [PIDNN_200, PIDNN_400, FF_200, FF_400, FF_800, FF_1600, FF_3200]
+  ALL_DATA_CONFIGS: [TOY_00_03, TOY_00_10, TOY_00_20, TOY_10_20, TOY_00_40, SIMULATION_00_03, SIMULATION_00_10, SIMULATION_00_20, SIMULATION_10_20, SIMULATION_00_40]
 
-  MODEL_CONFIGS: [WEAK_FF_400]
-  DATA_CONFIGS: [TOY_NOSTOP]
-  NOISE_CONFIGS: [0.00]
+  MODEL_CONFIGS: [PIDNN_200, PIDNN_400, FF_200, FF_400, FF_800, FF_1600, FF_3200]
+  DATA_CONFIGS: [SIMULATION_00_03, SIMULATION_00_10, SIMULATION_10_20, SIMULATION_00_20]
+  NOISE_CONFIGS: [0.00, 0.05]
 
   ALPHA: [0.01, 0.1, 1, 10, 100]
 
   SAVE_PLOT: True
   SAVE_MODEL: True
-  DATASET_CACHING: False
+  DATASET_CACHING: True
   MODEL_CACHING: False
+
+  save_debug: False
+  render: False
+
+# MODEL TEMPLATES
+
+PIDNN:
+  model_name: pidnn
+  num_layers: 8
+  neurons_per_layer: 20
+  training_is_border: False
+  take_differential_points: True
+  num_datadriven: -1  # To be filled by reader
+  num_collocation: -1 # Filled as 10*num_datadriven
+  differential_order: 3
+
+FF:
+  model_name: ff
+  num_layers: 8
+  neurons_per_layer: 20
+  training_is_border: False
+  take_differential_points: False
+  num_datadriven: -1  # To be filled by reader
+  num_collocation: 0
+
+# DATA RANGES
+TOY_00_03:
+  toy_data: True
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 20
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 3.0
+
+  datadir: ./Data/toy_00_03/
+  testdirs: []
+
+TOY_00_10:
+  toy_data: True
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 60
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 10.0
+
+  datadir: ./Data/toy_00_10/
+  testdirs: []
+
+TOY_00_20:
+  toy_data: True
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 120
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 20.0
+
+  datadir: ./Data/toy_00_20/
+  testdirs: []
+
+TOY_10_20:
+  toy_data: True
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 60
+  TRAIN_VX_START: 10.0
+  TRAIN_VX_END: 20.0
+
+  datadir: ./Data/toy_10_20/
+  testdirs: []
+
+TOY_00_40:
+  toy_data: True
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 2000
+  TRAIN_VX_VALUES: 240
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 40.0
+
+  datadir: ./Data/toy_00_40/
+  testdirs: []
+
+SIMULATION_00_03:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 20
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 3.0
+
+  datadir: ./Data/simulation_00_03/
+  testdirs: []
+
+SIMULATION_00_10:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 60
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 10.0
+
+  datadir: ./Data/simulation_00_10/
+  testdirs: []
+
+SIMULATION_00_20:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 120
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 20.0
+
+  datadir: ./Data/simulation_00_20/
+  testdirs: []
+
+SIMULATION_10_20:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 60
+  TRAIN_VX_START: 10.0
+  TRAIN_VX_END: 20.0
+
+  datadir: ./Data/simulation_10_20/
+  testdirs: []
+
+SIMULATION_00_40:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 2000
+  TRAIN_VX_VALUES: 240
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 40.0
+
+  datadir: ./Data/simulation_00_40/
+  testdirs: []
 
 # MODEL CONFIGS
 # differential_order - Tells the type of the differential equation used
@@ -28,143 +171,113 @@ COMMON:
 # 2: x_tt = acc
 # 3. x_ttt = 0
 
-BORDER_O1:
-  model_name: border_o1
-  training_is_border: True
-  take_differential_points: True
-  num_datadriven: 200
-  num_collocation: 1000
-  differential_order: 1
+# BORDER_O1:
+#   model_name: border_o1
+#   training_is_border: True
+#   take_differential_points: True
+#   num_datadriven: 200
+#   num_collocation: 1000
+#   differential_order: 1
 
-INTERNAL_O3_100:
-  model_name: internal_o3_100
-  training_is_border: False
-  take_differential_points: True
-  num_datadriven: 100
-  num_collocation: 1000
-  differential_order: 3
+# FRICTIONAL_PIDNN_100:
+#   model_name: internal_o3_100
+#   training_is_border: False
+#   take_differential_points: True
+#   num_datadriven: 100
+#   num_collocation: 1000
+#   differential_order: 3
 
-INTERNAL_O3_200:
-  model_name: internal_o3_200
-  training_is_border: False
-  take_differential_points: True
-  num_datadriven: 200
-  num_collocation: 1000
-  differential_order: 3
+# STRONG_FF:
+#   model_name: strong_ff
+#   training_is_border: False
+#   take_differential_points: False
+#   num_datadriven: 1200
+#   num_collocation: 0
 
-INTERNAL_O3_400:
-  model_name: internal_o3_400
-  training_is_border: False
-  take_differential_points: True
-  num_datadriven: 400
-  num_collocation: 1000
-  differential_order: 3
-
-STRONG_FF:
-  model_name: strong_ff
-  training_is_border: False
-  take_differential_points: False
-  num_datadriven: 1200
-  num_collocation: 0
-
-WEAK_FF_100:
-  model_name: weak_ff_100
-  training_is_border: False
-  take_differential_points: False
-  num_datadriven: 100
-  num_collocation: 0
-
-WEAK_FF_200:
-  model_name: weak_ff_200
-  training_is_border: False
-  take_differential_points: False
-  num_datadriven: 200
-  num_collocation: 0
-
-WEAK_FF_400:
-  model_name: weak_ff_400
-  training_is_border: False
-  take_differential_points: False
-  num_datadriven: 2000
-  num_collocation: 0
+# FF_100:
+#   model_name: ff_100
+#   training_is_border: False
+#   take_differential_points: False
+#   num_datadriven: 100
+#   num_collocation: 0
 
 # DATA CONFIGS
 # testdirs are which additional dirs to look for test files (in addition to the train dir)
 
-TOY_NOSTOP:
-  toy_data: True
-  acc: -0.9
+# TOY_NOSTOP:
+#   toy_data: True
+#   acc: -0.9
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 1.0
-  TRAIN_VX_END: 20.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 40
+#   TRAIN_VX_START: 0.0
+#   TRAIN_VX_END: 30.0
 
-  datadir: ./Data/toy_nostop/
-  testdirs: []
+#   datadir: ./Data/toy_nostop/
+#   testdirs: []
 
-TOY_HIGHSTOP:
-  toy_data: True
-  acc: -0.9
+# TOY_HIGHSTOP:
+#   toy_data: True
+#   acc: -0.9
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 0.0
-  TRAIN_VX_END: 3.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 20
+#   TRAIN_VX_START: 0.0
+#   TRAIN_VX_END: 3.0
 
-  datadir: ./Data/toy_highstop/
-  testdirs: []
+#   datadir: ./Data/toy_highstop/
+#   testdirs: []
 
-TOY_MIXED:
-  toy_data: True
-  acc: -0.9
+# TOY_MIXED:
+#   toy_data: True
+#   acc: -0.9
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 0.0
-  TRAIN_VX_END: 45.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 20
+#   TRAIN_VX_START: 0.0
+#   TRAIN_VX_END: 45.0
 
-  datadir: ./Data/toy_mixed/
-  testdirs: [./Data/toy_nostop/, ./Data/toy_highstop/]
+#   datadir: ./Data/toy_mixed/
+#   testdirs: [./Data/toy_nostop/, ./Data/toy_highstop/]
 
-SIMULATION_NOSTOP:
-  render: False
-  save_debug: False
-  toy_data: False
-  acc: -0.3928519
+# SIMULATION_NOSTOP:
+#   render: False
+#   save_debug: False
+#   toy_data: False
+#   acc: -0.3928519
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 40.0
-  TRAIN_VX_END: 45.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 20
+#   TRAIN_VX_START: 40.0
+#   TRAIN_VX_END: 45.0
 
-  datadir: ./Data/simulation_nostop/
-  testdirs: []
+#   datadir: ./Data/simulation_nostop/
+#   testdirs: []
 
-SIMULATION_HIGHSTOP:
-  render: False
-  save_debug: False
-  toy_data: False
-  acc: -0.3928519
+# SIMULATION_HIGHSTOP:
+#   render: False
+#   save_debug: False
+#   toy_data: False
+#   acc: -0.3928519
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 0.0
-  TRAIN_VX_END: 3.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 20
+#   TRAIN_VX_START: 0.0
+#   TRAIN_VX_END: 3.0
 
-  datadir: ./Data/simulation_highstop/
-  testdirs: []
+#   datadir: ./Data/simulation_highstop/
+#   testdirs: []
 
-SIMULATION_MIXED:
-  render: False
-  save_debug: False
-  toy_data: False
-  acc: -0.3928519
+# SIMULATION_MIXED:
+#   render: False
+#   save_debug: False
+#   toy_data: False
+#   acc: -0.3928519
 
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 20
-  TRAIN_VX_START: 0.0
-  TRAIN_VX_END: 45.0
+#   TRAIN_ITERATIONS: 1000
+#   TRAIN_VX_VALUES: 20
+#   TRAIN_VX_START: 0.0
+#   TRAIN_VX_END: 45.0
 
-  datadir: ./Data/simulation_mixed/
-  testdirs: [./Data/simulation_nostop/, ./Data/simulation_highstop/]
+#   datadir: ./Data/simulation_mixed/
+#   testdirs: [./Data/simulation_nostop/, ./Data/simulation_highstop/]

@@ -14,22 +14,27 @@ training_history = []		# Has iter, training loss, validation loss
 last_training_loss = None
 
 def plot_history(id, config, elapsed, error_validation):
-	global training_history
-	training_history = np.array(training_history[id])
-	epochs = training_history[:, 0].ravel()
-	training_loss = training_history[:, 1].ravel()
-	validation_loss = training_history[:, 2].ravel()
-	plt.clf()
-	plt.plot(epochs, training_loss, color = (63/255, 97/255, 143/255), label='Training loss')
-	plt.plot(epochs, validation_loss, color = (179/255, 89/255, 92/255), label='Validation loss')
-	plt.title('Training and Validation loss (MSE, relative MSE)\n' + f'Elapsed: {elapsed:.2f}, Validation Error: {error_validation:.5f}, Train Error: {last_training_loss:.5f}')
-	plt.xlabel('Epochs')
-	plt.ylabel('Loss')
-	plt.legend()
-	# plt.show()
-	savefile_name = 'plot_' + config['model_name']
-	savefile_name += '.png'
-	plt.savefig(config['modeldir'] + savefile_name)
+	valid_history = np.array(training_history[id])
+	epochs = valid_history[:, 0].ravel()
+	loss = {}
+	loss['Training'] = valid_history[:, 1].ravel()
+	loss['Validation'] = valid_history[:, 2].ravel()
+
+	for loss_type in loss.keys():
+		plt.clf()
+		plt.plot(epochs, loss[loss_type], color = (63/255, 97/255, 143/255), label=f'{loss_type} loss')
+		if (loss_type == 'training'): title = 'Training loss (MSE)\n'
+		else : title = 'Validation loss (Relative MSE)\n'
+		if config['take_differential_points']: alpha = config['ALPHA'][id]
+		else: alpha = 0
+
+		plt.title(title + f'Elapsed: {elapsed:.2f}, Validation Error: {error_validation:.2f}, Train Error: {last_training_loss[id]:.2f}, Alpha: {alpha}')
+		plt.xlabel('Epochs')
+		plt.ylabel('Loss')
+		plt.legend()
+		savefile_name = 'plot_' + config['model_name'] + '_' + loss_type
+		savefile_name += '.png'
+		plt.savefig(config['modeldir'] + savefile_name)
 
 class PINN(nn.Module):
 	
@@ -148,14 +153,15 @@ class PINN(nn.Module):
 			print(
 				'Iter %d, Training: %.5e, Validation: %.5e' % (self.iter, training_loss, validation_loss)
 			)
-			last_training_loss = training_loss
+			last_training_loss[self.id] = training_loss
 
 		return loss
 
 
 def pidnn_driver(config):
-	global training_history
+	global training_history, last_training_loss
 	training_history = [[] for i in config['ALPHA']]
+	last_training_loss = [None for i in config['ALPHA']]
 
 	N_u = config['num_datadriven']
 	N_f = config['num_collocation']
@@ -191,12 +197,12 @@ def pidnn_driver(config):
 		model = PINN(i, VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config, alpha)
 		model.to(device)
 
-		print(model)
+		# print(model)
 
 		# L-BFGS Optimizer
 		global optimizer
-		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
-									max_iter = 50000,
+		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.001, 
+									max_iter = 35000,
 									tolerance_grad = 1.0 * np.finfo(float).eps, 
 									tolerance_change = 1.0 * np.finfo(float).eps, 
 									history_size = 100)
@@ -216,13 +222,15 @@ def pidnn_driver(config):
 		elapsed = time.time() - start_time                
 		print('Training time: %.2f' % (elapsed))
 
-		models.append(model)
 		validation_losses.append(mdl.set_loss(model, device).item())
+
+		model.to('cpu')
+		models.append(model)
 
 	model = models[argmin(validation_losses)] # choosing best model out of the bunch
 
 	""" Model Accuracy """ 
-	error_validation = mdl.set_loss(model, device).item()
+	error_validation = validation_losses[model.id]
 	print('Validation Error: %.5f'  % (error_validation))
 
 	"""" For plotting model train and validation errors """
@@ -230,6 +238,9 @@ def pidnn_driver(config):
 
 	""" Saving model for reloading later """
 	if config['SAVE_MODEL']: torch.save(model, config['modeldir'] + config['model_name'] + '.pt')
+
+	if device == 'cuda':
+		torch.cuda.empty_cache()
 
 # if __name__ == "__main__": 
 # 	main_loop(config['num_datadriven'], config['num_collocation'], config['num_layers'], config['neurons_per_layer'], config['num_validation'])
