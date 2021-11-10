@@ -129,18 +129,6 @@ SIMULATION_00_10:
   datadir: ./Data/simulation_00_10/
   testdirs: []
 
-SIMULATION_00_20:
-  toy_data: False
-  acc: -0.9
-
-  TRAIN_ITERATIONS: 1000
-  TRAIN_VX_VALUES: 120
-  TRAIN_VX_START: 0.0
-  TRAIN_VX_END: 20.0
-
-  datadir: ./Data/simulation_00_20/
-  testdirs: []
-
 SIMULATION_10_20:
   toy_data: False
   acc: -0.9
@@ -151,6 +139,18 @@ SIMULATION_10_20:
   TRAIN_VX_END: 20.0
 
   datadir: ./Data/simulation_10_20/
+  testdirs: []
+
+SIMULATION_00_20:
+  toy_data: False
+  acc: -0.9
+
+  TRAIN_ITERATIONS: 1000
+  TRAIN_VX_VALUES: 120
+  TRAIN_VX_START: 0.0
+  TRAIN_VX_END: 20.0
+
+  datadir: ./Data/simulation_00_20/
   testdirs: []
 
 SIMULATION_00_40:

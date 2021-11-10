@@ -201,8 +201,8 @@ def pidnn_driver(config):
 
 		# L-BFGS Optimizer
 		global optimizer
-		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.001, 
-									max_iter = 35000,
+		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
+									max_iter = 3500,
 									tolerance_grad = 1.0 * np.finfo(float).eps, 
 									tolerance_change = 1.0 * np.finfo(float).eps, 
 									history_size = 100)
