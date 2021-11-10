@@ -18,7 +18,7 @@ COMMON:
   SAVE_PLOT: True
   SAVE_MODEL: True
   DATASET_CACHING: True
-  MODEL_CACHING: True
+  MODEL_CACHING: False
   CUDA_ENABLED: True
 
   save_debug: False
