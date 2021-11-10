@@ -172,8 +172,7 @@ def pidnn_driver(config):
 	torch.manual_seed(1234)
 	np.random.seed(1234)
 
-	# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-	device = 'cpu'	# set as cpu for more parallel training
+	device = torch.device('cuda' if torch.cuda.is_available() and config['CUDA_ENABLED'] else 'cpu')
 
 	print("Running this on", device)
 	if device == 'cuda': 

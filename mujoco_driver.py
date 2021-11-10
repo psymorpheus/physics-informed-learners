@@ -89,14 +89,14 @@ def train_all_models():
 
             for active_model_config_name in common_config['MODEL_CONFIGS']:
                 if common_config['MODEL_CACHING'] and os.path.isfile(f'./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt'):
-                    print(f'======================= Skipping ./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/f{active_data_config_name.lower()}.pt =======================')
+                    print(f'======================= Skipping ./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt =======================')
                     continue
 
                 active_model_config = all_configs[active_model_config_name].copy()
                 active_model_config.update(active_data_config)
                 config = active_model_config
 
-                config['datafile'] = config['TESTFILE']
+                config['datafile'] = config['TRAINFILE']
                 config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
                 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
                 config['noise'] = noise
@@ -125,7 +125,7 @@ def test_all_models():
                 model = torch.load('Models/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + active_model_config_name.lower() + '.pt')
                 model.eval()
 
-                dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TRAINFILE'], model).item())
+                dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
            
             dicts_testdata.append(dict_testdata)
         

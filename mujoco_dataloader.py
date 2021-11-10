@@ -155,7 +155,7 @@ def dataloader(config, device):
 	return VT_u_train, X_u_train, VT_f_train, lb, ub
 
 def testloader(config, testfile, model):
-	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	device = torch.device('cuda' if torch.cuda.is_available() and config['CUDA_ENABLED'] else 'cpu')
 
 	data = np.genfromtxt(testfile, delimiter=',')
 	data = np.array(data, dtype=np.float32)
