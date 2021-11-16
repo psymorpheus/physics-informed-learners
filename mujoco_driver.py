@@ -18,7 +18,7 @@ with open("mujoco_config.yaml", "r") as f:
         training_points = int(instance[(instance.rfind('_')+1):])
         template_config = all_configs[template_name].copy()
         template_config['num_datadriven'] = training_points
-        if template_config['num_collocation'] == -1: template_config['num_collocation'] = 10 * training_points
+        # if template_config['num_collocation'] == -1: template_config['num_collocation'] = 10 * training_points
         template_config['model_name'] = template_name.lower() + '_' + str(training_points)
         all_configs[template_name + '_' + str(training_points)] = template_config
 
@@ -28,9 +28,9 @@ def generate_folders():
         path = os.path.join(datadir, filename.lower())
         try:
             os.makedirs(path, exist_ok = True)
-            print("Successfully created '%s'" % (datadir+filename.lower()))
+            print("Successfully created '%s'" % (datadir+'/'+filename.lower()))
         except OSError as error:
-            print("'%s' can not be created" % (datadir+filename.lower()))
+            print("'%s' can not be created" % (datadir+'/'+filename.lower()))
     modeldir = './Models'
     for noise in common_config['NOISE_CONFIGS']:
         noisedir = f'Noise_{int(100*noise)}'
@@ -101,7 +101,7 @@ def train_all_models():
                 config['noise'] = noise
                 config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name.lower() + '/'
 
-                print(f'======================={active_data_config_name}, {active_model_config_name}=======================')
+                print(f'======================={active_data_config_name}, {active_model_config_name}, Noise {int(100*noise)}%=======================')
                 pidnn_driver(config)
 
 # train_all_models()

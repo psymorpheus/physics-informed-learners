@@ -69,13 +69,12 @@ def set_loss(model, device, batch_size, data = None, X_true = None):
 # 	error_vec = torch.linalg.norm((X_test-X_pred),2)/torch.linalg.norm(X_test,2)		# Relative L2 Norm of the error (Vector)
 # 	return error_vec
 
-def dataloader(config, device):
+def dataloader(config, N_f, device):
 	""" N_u = training data / boundary points for data driven training
 	N_f = collocation points for differential for differential driven training
 	"""
 
 	N_u = config['num_datadriven']
-	N_f = config['num_collocation']
 
 	data = np.genfromtxt(config['datadir'] + config['datafile'], delimiter=',')
 	data = np.array(data, dtype=np.float32)

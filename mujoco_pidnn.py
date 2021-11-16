@@ -1,44 +1,21 @@
 from numpy.core.fromnumeric import argmin
+from numpy.lib.npyio import save
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
 
 import numpy as np
+import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
 import mujoco_dataloader as mdl
 
 optimizer = None
-# training_history = []		# Has iter, training loss, validation loss
-# last_training_loss = None
-
-def plot_history(model, elapsed, filename):
-	valid_history = np.array(training_history[id])
-	epochs = valid_history[:, 0].ravel()
-	loss = {}
-	loss['Training'] = valid_history[:, 1].ravel()
-	loss['Validation'] = valid_history[:, 2].ravel()
-
-	for loss_type in loss.keys():
-		plt.clf()
-		plt.plot(epochs, loss[loss_type], color = (63/255, 97/255, 143/255), label=f'{loss_type} loss')
-		if (loss_type == 'training'): title = 'Training loss (MSE)\n'
-		else : title = 'Validation loss (Relative MSE)\n'
-		if config['take_differential_points']: alpha = config['ALPHA'][id]
-		else: alpha = 0
-
-		plt.title(title + f'Elapsed: {elapsed:.2f}, Validation Error: {error_validation:.2f}, Train Error: {last_training_loss[id]:.2f}, Alpha: {alpha}')
-		plt.xlabel('Epochs')
-		plt.ylabel('Loss')
-		plt.legend()
-		savefile_name = 'plot_' + config['model_name'] + '_' + loss_type
-		savefile_name += '.png'
-		plt.savefig(config['modeldir'] + savefile_name)
 
 class PINN(nn.Module):
 	
-	def __init__(self, id, VT_u, X_u, VT_f, layers, lb, ub, device, config, alpha):
+	def __init__(self, id, VT_u, X_u, VT_f, layers, lb, ub, device, config, alpha, N_u, N_f):
 		""" For better comments refer to Burgers-PINN/myBurgers.py """
 
 		super().__init__()
@@ -49,6 +26,8 @@ class PINN(nn.Module):
 		self.u_b = ub
 		self.l_b = lb
 		self.alpha = alpha
+		self.N_u = N_u
+		self.N_f = N_f
 		self.batch_size = config['BATCH_SIZE']
 		self.config = config
 	   
@@ -65,9 +44,10 @@ class PINN(nn.Module):
 		self.iter = 0
 		self.loss_u = None
 		self.loss_f = None
+		self.elapsed = None
 
 		self.iter_history = []
-		self.history = [] # train, loss_u, loss_f, validation
+		self.history = None # train, loss_u, loss_f, validation
 
 		for i in range(len(layers)-1):
 			# Recommended gain value for tanh = 5/3? TODO
@@ -102,7 +82,6 @@ class PINN(nn.Module):
 			mse += torch.sum((batch_err)**2)/size
 
 		return mse
-
 	
 	def loss_BC(self,x,y):
 		""" Loss at boundary and initial conditions """
@@ -175,18 +154,47 @@ class PINN(nn.Module):
 				'Iter %d, Training: %.5e, Data loss: %.5e, Collocation loss: %.5e, Validation: %.5e' % (self.iter, training_loss, self.loss_u, self.loss_f, validation_loss)
 			)
 			self.iter_history.append(self.iter)
-			self.history.append([training_loss, self.loss_u.item(), self.loss_f.item(), validation_loss])
+			current_history = np.array([training_loss, self.loss_u.item(), self.loss_f.item(), validation_loss])
+			if self.history is None: self.history = current_history
+			else: self.history = np.vstack([self.history, current_history])
 
 		return loss
+	
+	def plot_history(self, debug=True):
+		""" Saves training (loss_u + loss_f and both separately) and validation losses
+		"""
+		epochs = self.iter_history
+		loss = {}
+		loss['Training'] = np.ndarray.tolist(self.history[:,0].ravel())
+		loss['Data'] = np.ndarray.tolist(self.history[:,1].ravel())
+		loss['Collocation'] = np.ndarray.tolist(self.history[:,2].ravel())
+		loss['Validation'] = np.ndarray.tolist(self.history[:,3].ravel())
+		last_training_loss = loss['Training'][-1]
+		last_validation_loss = loss['Validation'][-1]
 
+		for loss_type in loss.keys():
+			plt.clf()
+			plt.plot(epochs, loss[loss_type], color = (63/255, 97/255, 143/255), label=f'{loss_type} loss')
+			if (loss_type == 'Validation'): title = f'{loss_type} loss (Relative MSE)\n'
+			else : title = f'{loss_type} loss (MSE)\n'
+
+			plt.title(
+				title + 
+				f'Elapsed: {self.elapsed:.2f}, Alpha: {self.alpha}, N_u: {self.N_u}, N_f: {self.N_f},\n Validation: {last_validation_loss:.2f}, Train: {last_training_loss:.2f}'
+			)
+			plt.xlabel('Epochs')
+			plt.ylabel('Loss')
+			plt.legend()
+			savefile_name = ''
+			if debug: savefile_name += 'Debug_'
+			savefile_name += 'plot_' + self.config['model_name']
+			if debug: savefile_name += '_' + str(self.N_f) + '_' + str(self.alpha)
+			savefile_name += '_' + loss_type
+			savefile_name += '.png'
+			if self.config['SAVE_PLOT']: plt.savefig(self.config['modeldir'] + savefile_name)
 
 def pidnn_driver(config):
-	global training_history, last_training_loss
-	training_history = [[] for i in config['ALPHA']]
-	last_training_loss = [None for i in config['ALPHA']]
-
-	N_u = config['num_datadriven']
-	N_f = config['num_collocation']
+	plt.figure(figsize=(8, 6), dpi=80)
 	num_layers = config['num_layers']
 	num_neurons = config['neurons_per_layer']
 
@@ -204,62 +212,63 @@ def pidnn_driver(config):
 	# layers is a list, not an ndarray
 	layers = np.concatenate([[2], num_neurons*np.ones(num_layers), [1]]).astype(int).tolist()
 
-	VT_u_train, u_train, VT_f_train, lb, ub = mdl.dataloader(config, device)
-
 	models = []
 	validation_losses = []
 	
-	if not config['take_differential_points']:
-		num_alpha = 1
-	else:
-		num_alpha = len(config['ALPHA'])
+	for i in range(len(config['collocation_multiplier'])):
+		N_u = config['num_datadriven']
+		N_f = N_u * config['collocation_multiplier'][i]
+		VT_u_train, u_train, VT_f_train, lb, ub = mdl.dataloader(config, N_f,device)
+		if not config['take_differential_points']: num_alpha = 1
+		else: num_alpha = len(config['ALPHA'])
 
-	for i in range(num_alpha):
-		alpha = config['ALPHA'][i]
-		model = PINN(i, VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config, alpha)
-		model.to(device)
+		for j in range(num_alpha):
+			alpha = config['ALPHA'][j]
 
-		# print(model)
+			print(f'++++++++++ N_u:{N_u}, N_f:{N_f}, Alpha:{alpha} ++++++++++')
 
-		# L-BFGS Optimizer
-		global optimizer
-		optimizer = torch.optim.LBFGS(model.parameters(), lr=0.01, 
-									max_iter = 3500,
-									tolerance_grad = 1.0 * np.finfo(float).eps, 
-									tolerance_change = 1.0 * np.finfo(float).eps, 
-									history_size = 100)
-		# optimizer = torch.optim.LBFGS(
-		# 	model.parameters(), 
-		# 	lr=0.01, 
-		# 	max_iter=50000, 
-		# 	max_eval=50000, 
-		# 	history_size=50,
-		# 	tolerance_grad=1.0 * np.finfo(float).eps, 
-		# 	tolerance_change=1.0 * np.finfo(float).eps,
-		# 	line_search_fn="strong_wolfe"       # can be "strong_wolfe"
-		# )
-		
-		start_time = time.time()
-		optimizer.step(model.closure)		# Does not need any loop like Adam
-		elapsed = time.time() - start_time                
-		print('Training time: %.2f' % (elapsed))
+			model = PINN((i,j), VT_u_train, u_train, VT_f_train, layers, lb, ub, device, config, alpha, N_u, N_f)
+			model.to(device)
+			# print(model)
 
-		validation_losses.append(mdl.set_loss(model, device, config['BATCH_SIZE']).item())
+			# L-BFGS Optimizer
+			global optimizer
+			optimizer = torch.optim.LBFGS(
+				model.parameters(), lr=0.01, 
+				max_iter = 4000,
+				tolerance_grad = 1.0 * np.finfo(float).eps, 
+				tolerance_change = 1.0 * np.finfo(float).eps, 
+				history_size = 100
+			)
+			
+			start_time = time.time()
+			optimizer.step(model.closure)		# Does not need any loop like Adam
+			elapsed = time.time() - start_time                
+			print('Training time: %.2f' % (elapsed))
 
-		model.to('cpu')
-		models.append(model)
+			validation_loss = mdl.set_loss(model, device, config['BATCH_SIZE'])
+			model.elapsed = elapsed
+			model.plot_history()
+			model.to('cpu')
+			models.append(model)
+			validation_losses.append(validation_loss)
 
-	model = models[argmin(validation_losses)] # choosing best model out of the bunch
+	model_id = argmin(validation_losses) # choosing best model out of the bunch
+	model = models[model_id]
 
 	""" Model Accuracy """ 
-	error_validation = validation_losses[model.id]
-	print('Validation Error: %.5f'  % (error_validation))
+	error_validation = validation_losses[model_id]
+	print('Validation Error of finally selected model: %.5f'  % (error_validation))
 
-	"""" For plotting model train and validation errors """
-	if config['SAVE_PLOT']: plot_history(model.id, config, elapsed, error_validation)
+	"""" For plotting final model train and validation errors """
+	if config['SAVE_PLOT']: model.plot_history(debug=False)
 
-	""" Saving model for reloading later """
+	""" Saving only final model for reloading later """
 	if config['SAVE_MODEL']: torch.save(model, config['modeldir'] + config['model_name'] + '.pt')
+
+	all_hyperparameter_models = [[models[md].N_u, models[md].N_f, models[md].alpha, validation_losses[md]] for md in range(len(models))]
+	all_hyperparameter_models = pd.DataFrame(all_hyperparameter_models)
+	all_hyperparameter_models.to_csv(config['modeldir'] + config['model_name'] + '.csv', header=['N_u', 'N_f', 'alpha', 'Validation Error'])
 
 	if device == 'cuda':
 		torch.cuda.empty_cache()
