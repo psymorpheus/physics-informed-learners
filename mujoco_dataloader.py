@@ -44,23 +44,22 @@ X_validation = None
 # 		total_error = total_error/total
 # 	return total_error
 
-def set_loss(model, device, data = None, X = None):
+def set_loss(model, device, batch_size, data = None, X_true = None):
 	# Returns relative MSE
 	if data is None:
 		data = VT_validation
-		X = X_validation
+		X_true = X_validation
 	error = 0
 	actual = 0
-	batch_size = 128
-	size = X.shape[0]
-	if size<3000: batch_size = size
+	size = X_true.shape[0]
+	if size<1000: batch_size = size
 	for i in range(0, size, batch_size):
 		batch_data = data[i:min(i+batch_size,size), :]
-		batch_X = X[i:min(i+batch_size,size), :]
+		batch_X_true = X_true[i:min(i+batch_size,size), :]
 		with torch.no_grad():
-			X_pred = model.forward(batch_data)
-		error += torch.sum((X_pred-batch_X)**2)/batch_X.shape[0]
-		actual += torch.sum((batch_data)**2)/batch_data.shape[0]
+			batch_X_predicted = model.forward(batch_data)
+		error += torch.sum((batch_X_predicted-batch_X_true)**2)/size
+		actual += torch.sum((batch_X_true)**2)/size
 		
 	return error/actual
 
@@ -173,7 +172,7 @@ def testloader(config, testfile, model):
 	X_test = torch.from_numpy(X_test).float().to(device)
 	model.to(device)
 
-	return set_loss(model, device, VT_test, X_test)
+	return set_loss(model, device, config['BATCH_SIZE'], VT_test, X_test)
 
 if __name__=="__main__":
   print("Please call this from pidnn file.")

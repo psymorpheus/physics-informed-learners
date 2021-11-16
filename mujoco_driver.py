@@ -24,7 +24,7 @@ with open("mujoco_config.yaml", "r") as f:
 
 def generate_folders():
     datadir = './Data'
-    for filename in common_config['ALL_DATA_CONFIGS']:
+    for filename in common_config['DATA_CONFIGS']:
         path = os.path.join(datadir, filename.lower())
         try:
             os.makedirs(path, exist_ok = True)
@@ -34,7 +34,7 @@ def generate_folders():
     modeldir = './Models'
     for noise in common_config['NOISE_CONFIGS']:
         noisedir = f'Noise_{int(100*noise)}'
-        for filename in common_config['ALL_DATA_CONFIGS']:
+        for filename in common_config['DATA_CONFIGS']:
             path = os.path.join(modeldir, noisedir + '/' + filename.lower())
             try:
                 os.makedirs(path, exist_ok = True)
@@ -66,8 +66,7 @@ def generate_all_datasets():
         config['datafile'] = config['TESTFILE']
         new_vx_range = []
         for i in range(len(config['vx_range'])-1):
-            middle_range = np.linspace(config['vx_range'][i], config['vx_range'][i+1], num=2+config['TESTSET_MULTIPLIER'], dtype=np.float32)
-            new_vx_range.append(middle_range[1:-1])
+            new_vx_range.append(np.random.uniform(low=config['vx_range'][i], high=config['vx_range'][i+1], size=(config['TESTSET_MULTIPLIER'],)))
         config['vx_range'] = np.array(new_vx_range).reshape((-1,))
 
         if config['DATASET_CACHING'] and os.path.isfile(config['datadir']+config['datafile']):

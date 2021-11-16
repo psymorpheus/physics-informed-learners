@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import mujoco_dataloader as mdl
 
 optimizer = None
-training_history = []		# Has iter, training loss, validation loss
-last_training_loss = None
+# training_history = []		# Has iter, training loss, validation loss
+# last_training_loss = None
 
-def plot_history(id, config, elapsed, error_validation):
+def plot_history(model, elapsed, filename):
 	valid_history = np.array(training_history[id])
 	epochs = valid_history[:, 0].ravel()
 	loss = {}
@@ -45,27 +45,33 @@ class PINN(nn.Module):
 		
 		self.id = id
 		self.device = device
-		self.config = config
 
 		self.u_b = ub
 		self.l_b = lb
 		self.alpha = alpha
+		self.batch_size = config['BATCH_SIZE']
+		self.config = config
 	   
 		self.VT_u = VT_u
 		self.X_u = X_u
 		self.XT_f = VT_f
 		self.layers = layers
 
-		self.f_hat = torch.zeros(VT_f.shape[0],1).to(device)
+		# self.f_hat = torch.zeros(VT_f.shape[0],1).to(device)
 
 		self.activation = nn.Tanh()
-		self.loss_function = nn.MSELoss(reduction ='mean')
+		# self.loss_function = nn.MSELoss(reduction ='mean') # removing for being able to batch 
 		self.linears = nn.ModuleList([nn.Linear(layers[i], layers[i+1]) for i in range(len(layers)-1)])
 		self.iter = 0
+		self.loss_u = None
+		self.loss_f = None
+
+		self.iter_history = []
+		self.history = [] # train, loss_u, loss_f, validation
 
 		for i in range(len(layers)-1):
 			# Recommended gain value for tanh = 5/3? TODO
-			nn.init.xavier_normal_(self.linears[i].weight.data, gain=1.0)
+			nn.init.xavier_normal_(self.linears[i].weight.data, gain=5/3)
 			nn.init.zeros_(self.linears[i].bias.data)
 	
 	def forward(self,x):
@@ -85,10 +91,26 @@ class PINN(nn.Module):
 		
 		return a
 
+	def batched_mse(self, err):
+		size = err.shape[0]
+		if size<1000: batch_size = size
+		else: batch_size = self.batch_size
+		mse = 0
+		
+		for i in range(0, size, batch_size):
+			batch_err = err[i:min(i+batch_size,size), :]
+			mse += torch.sum((batch_err)**2)/size
+
+		return mse
+
+	
 	def loss_BC(self,x,y):
 		""" Loss at boundary and initial conditions """
-		
-		loss_u = self.loss_function(self.forward(x), y)
+		prediction = self.forward(x)
+		error = prediction - y
+		loss_u = self.batched_mse(error)
+
+		# loss_u = self.loss_function(self.forward(x), y)
 		return loss_u
 
 	def loss_PDE(self, VT_f_train):
@@ -120,18 +142,18 @@ class PINN(nn.Module):
 			x_ttt = x_vvv_ttt[:,[1]]
 			f = x_ttt
 
-		loss_f = self.loss_function(f,self.f_hat)
-				
+		# loss_f = self.loss_function(f,self.f_hat)
+		loss_f = self.batched_mse(f)
 		return loss_f
 
 	def loss(self,VT_u_train,X_u_train,VT_f_train):
 
-		loss_u = self.loss_BC(VT_u_train,X_u_train)
+		self.loss_u = self.loss_BC(VT_u_train,X_u_train)
 		if self.config['take_differential_points']:
-			loss_f = self.loss_PDE(VT_f_train)
+			self.loss_f = self.alpha * self.loss_PDE(VT_f_train)
 		else:
-			loss_f = 0
-		loss_val = loss_u + self.alpha * loss_f
+			self.loss_f = 0
+		loss_val = self.loss_u + self.loss_f
 		
 		return loss_val
 
@@ -139,7 +161,6 @@ class PINN(nn.Module):
 		""" Called multiple times by optimizers like Conjugate Gradient and LBFGS.
 		Clears gradients, compute and return the loss.
 		"""
-		global last_training_loss
 		optimizer.zero_grad()
 		loss = self.loss(self.VT_u, self.X_u, self.XT_f)
 		loss.backward()		# To get gradients
@@ -148,12 +169,13 @@ class PINN(nn.Module):
 
 		if self.iter % 100 == 0:
 			training_loss = loss.item()
-			validation_loss = mdl.set_loss(self, self.device).item()
-			training_history[self.id].append([self.iter, training_loss, validation_loss])
+			validation_loss = mdl.set_loss(self, self.device, self.batch_size).item()
+			# training_history[self.id].append([self.iter, training_loss, validation_loss])
 			print(
-				'Iter %d, Training: %.5e, Validation: %.5e' % (self.iter, training_loss, validation_loss)
+				'Iter %d, Training: %.5e, Data loss: %.5e, Collocation loss: %.5e, Validation: %.5e' % (self.iter, training_loss, self.loss_u, self.loss_f, validation_loss)
 			)
-			last_training_loss[self.id] = training_loss
+			self.iter_history.append(self.iter)
+			self.history.append([training_loss, self.loss_u.item(), self.loss_f.item(), validation_loss])
 
 		return loss
 
@@ -171,6 +193,7 @@ def pidnn_driver(config):
 	torch.set_default_dtype(torch.float)
 	torch.manual_seed(1234)
 	np.random.seed(1234)
+	if config['ANOMALY_DETECTION']: torch.autograd.set_detect_anomaly(True)
 
 	device = torch.device('cuda' if torch.cuda.is_available() and config['CUDA_ENABLED'] else 'cpu')
 
@@ -221,7 +244,7 @@ def pidnn_driver(config):
 		elapsed = time.time() - start_time                
 		print('Training time: %.2f' % (elapsed))
 
-		validation_losses.append(mdl.set_loss(model, device).item())
+		validation_losses.append(mdl.set_loss(model, device, config['BATCH_SIZE']).item())
 
 		model.to('cpu')
 		models.append(model)
