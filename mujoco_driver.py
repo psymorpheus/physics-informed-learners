@@ -9,7 +9,12 @@ from mujoco_pidnn import pidnn_driver
 import os
 import sys
 
-with open("mujoco_config.yaml", "r") as f:
+if len(sys.argv) > 2:
+    config_filename = sys.argv[2]
+else:
+    config_filename = "mujoco_config.yaml"
+
+with open(config_filename, "r") as f:
     all_configs = yaml.safe_load(f)
     common_config = all_configs['COMMON'].copy()
     # Filling in models from model templates
@@ -39,6 +44,10 @@ def generate_folders():
             try:
                 os.makedirs(path, exist_ok = True)
                 print("Successfully created '%s'" % (modeldir + '/' + noisedir + '/' + filename.lower()))
+                for modelname in common_config['ALL_MODEL_CONFIGS']:
+                    modelpath = os.path.join(path, modelname.lower())
+                    os.makedirs(modelpath, exist_ok = True)
+                    print("Successfully created '%s'" % (path + '/' + modelname.lower()))
             except OSError as error:
                 print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
     print('Successfully created all directories!')

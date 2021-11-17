@@ -1,4 +1,3 @@
-from numpy.core.fromnumeric import argmin
 from numpy.lib.npyio import save
 import torch
 import torch.autograd as autograd
@@ -131,7 +130,7 @@ class PINN(nn.Module):
 		if self.config['take_differential_points']:
 			self.loss_f = self.alpha * self.loss_PDE(VT_f_train)
 		else:
-			self.loss_f = 0
+			self.loss_f = torch.tensor(0)
 		loss_val = self.loss_u + self.loss_f
 		
 		return loss_val
@@ -163,12 +162,19 @@ class PINN(nn.Module):
 	def plot_history(self, debug=True):
 		""" Saves training (loss_u + loss_f and both separately) and validation losses
 		"""
-		epochs = self.iter_history
 		loss = {}
-		loss['Training'] = np.ndarray.tolist(self.history[:,0].ravel())
-		loss['Data'] = np.ndarray.tolist(self.history[:,1].ravel())
-		loss['Collocation'] = np.ndarray.tolist(self.history[:,2].ravel())
-		loss['Validation'] = np.ndarray.tolist(self.history[:,3].ravel())
+		if self.history is not None:
+			epochs = self.iter_history
+			loss['Training'] = np.ndarray.tolist(self.history[:,0].ravel())
+			loss['Data'] = np.ndarray.tolist(self.history[:,1].ravel())
+			loss['Collocation'] = np.ndarray.tolist(self.history[:,2].ravel())
+			loss['Validation'] = np.ndarray.tolist(self.history[:,3].ravel())
+		else:
+			epochs = [self.iter]
+			loss['Training'] = [1e6]
+			loss['Data'] = [1e6]
+			loss['Collocation'] = [1e6]
+			loss['Validation'] = [1e6]
 		last_training_loss = loss['Training'][-1]
 		last_validation_loss = loss['Validation'][-1]
 
@@ -191,7 +197,10 @@ class PINN(nn.Module):
 			if debug: savefile_name += '_' + str(self.N_f) + '_' + str(self.alpha)
 			savefile_name += '_' + loss_type
 			savefile_name += '.png'
-			if self.config['SAVE_PLOT']: plt.savefig(self.config['modeldir'] + savefile_name)
+			savedir = self.config['modeldir']
+			if debug: savedir += self.config['model_name'] + '/'
+
+			if self.config['SAVE_PLOT']: plt.savefig(savedir + savefile_name)
 
 def pidnn_driver(config):
 	plt.figure(figsize=(8, 6), dpi=80)
@@ -201,7 +210,12 @@ def pidnn_driver(config):
 	torch.set_default_dtype(torch.float)
 	torch.manual_seed(1234)
 	np.random.seed(1234)
-	if config['ANOMALY_DETECTION']: torch.autograd.set_detect_anomaly(True)
+	if config['ANOMALY_DETECTION']:
+		torch.autograd.set_detect_anomaly(True)
+	else:
+		torch.autograd.set_detect_anomaly(False)
+		torch.autograd.profiler.profile(False)
+		torch.autograd.profiler.emit_nvtx(False)
 
 	device = torch.device('cuda' if torch.cuda.is_available() and config['CUDA_ENABLED'] else 'cpu')
 
@@ -235,7 +249,7 @@ def pidnn_driver(config):
 			global optimizer
 			optimizer = torch.optim.LBFGS(
 				model.parameters(), lr=0.01, 
-				max_iter = 4000,
+				max_iter = config['EARLY_STOPPING'],
 				tolerance_grad = 1.0 * np.finfo(float).eps, 
 				tolerance_change = 1.0 * np.finfo(float).eps, 
 				history_size = 100
@@ -251,9 +265,9 @@ def pidnn_driver(config):
 			model.plot_history()
 			model.to('cpu')
 			models.append(model)
-			validation_losses.append(validation_loss)
+			validation_losses.append(validation_loss.cpu().item())
 
-	model_id = argmin(validation_losses) # choosing best model out of the bunch
+	model_id = np.nanargmin(validation_losses) # choosing best model out of the bunch
 	model = models[model_id]
 
 	""" Model Accuracy """ 
