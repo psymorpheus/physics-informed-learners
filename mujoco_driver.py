@@ -6,6 +6,7 @@ from mujoco_datagen_toy import toy_datagen
 from mujoco_datagen_simulation import simulation_datagen
 from mujoco_dataloader import testloader
 from mujoco_pidnn import pidnn_driver
+from mujoco_ff import ff_driver
 import os
 import sys
 
@@ -111,7 +112,10 @@ def train_all_models():
                 config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name.lower() + '/'
 
                 print(f'======================={active_data_config_name}, {active_model_config_name}, Noise {int(100*noise)}%=======================')
-                pidnn_driver(config)
+                if config['take_differential_points']:
+                    pidnn_driver(config)
+                else:
+                    ff_driver(config)
 
 # train_all_models()
 
