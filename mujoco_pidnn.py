@@ -154,7 +154,7 @@ class PINN(nn.Module):
 			)
 			self.iter_history.append(self.iter)
 			current_history = np.array([training_loss, self.loss_u.item(), self.loss_f.item(), validation_loss])
-			if self.history is None: self.history = current_history
+			if self.history is None: self.history = current_history.reshape(1,-1)
 			else: self.history = np.vstack([self.history, current_history])
 
 		return loss

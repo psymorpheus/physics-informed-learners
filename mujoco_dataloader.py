@@ -132,7 +132,7 @@ def dataloader(config, N_f, device):
 	X_test = np.delete(X_true, idx_train, axis=0)
 
 	# Takes validation and training in 1:1 ratio
-	idx_validation = np.random.choice(VT_test.shape[0], N_u, replace=False)
+	idx_validation = np.random.choice(VT_test.shape[0], 2*N_u, replace=False)
 	VT_validation = VT_test[idx_validation, :]
 	X_validation = X_test[idx_validation, :]
 	VT_test = np.delete(VT_test, idx_validation, axis=0)
