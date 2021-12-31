@@ -208,8 +208,8 @@ def pidnn_driver(config):
 	num_neurons = config['neurons_per_layer']
 
 	torch.set_default_dtype(torch.float)
-	torch.manual_seed(1234)
-	np.random.seed(1234)
+	torch.manual_seed(config['seed'])
+	np.random.seed(config['seed'])
 	if config['ANOMALY_DETECTION']:
 		torch.autograd.set_detect_anomaly(True)
 	else:

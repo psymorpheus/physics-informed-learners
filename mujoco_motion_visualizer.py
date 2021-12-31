@@ -20,12 +20,12 @@ with open("mujoco_config.yaml", "r") as f:
 
 # vx = float(input('Enter initial velocity: '))
 # tsteps = int(input('Enter number of timesteps: '))
-vx = 29
+vx = 32
 tsteps = 1900
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-active_data_config_name = 'WILDCARD'
+active_data_config_name = 'WILDCARD_01'
 active_model_config_name = 'FF_800'
 noise = 0.05
 

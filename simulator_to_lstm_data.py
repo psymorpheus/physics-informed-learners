@@ -3,10 +3,10 @@ import torch
 
 np.random.seed(2)
 
-train_data = np.genfromtxt('train.csv', delimiter=',')
+train_data = np.genfromtxt('Data/simulation_10_20/train.csv', delimiter=',')
 train_data = np.array(train_data, dtype=np.double)
 
-test_data = np.genfromtxt('test.csv', delimiter=',')
+test_data = np.genfromtxt('Data/simulation_10_20/test.csv', delimiter=',')
 test_data = np.array(test_data, dtype=np.double)
 
 vrange = train_data[0, 1:]
@@ -25,5 +25,5 @@ N = vrange.shape[0]
 # for i in range(test_data.shape[1]-1, 0, -1):
 #     test_data[:, i] = test_data[:, i] - test_data[:, (i-1)]
 
-torch.save(train_data, open('traindata.pt', 'wb'))
-torch.save(test_data, open('testdata.pt', 'wb'))
+torch.save(train_data, open('LSTM/traindata.pt', 'wb'))
+torch.save(test_data, open('LSTM/testdata.pt', 'wb'))

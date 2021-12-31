@@ -1,4 +1,3 @@
-from __future__ import print_function
 import argparse
 import torch
 import torch.nn as nn
@@ -86,8 +85,8 @@ if __name__ == '__main__':
     np.random.seed(0)
     torch.manual_seed(0)
     # load data and make training set
-    train_data = torch.load('traindata.pt')
-    test_data = torch.load('testdata.pt')
+    train_data = torch.load('LSTM/traindata.pt')
+    test_data = torch.load('LSTM/testdata.pt')
 
     input = torch.from_numpy(train_data[:, :-1])
     target = torch.from_numpy(train_data[:, 1:])
@@ -107,13 +106,13 @@ if __name__ == '__main__':
     seq.double()
     criterion = nn.MSELoss()
     # use LBFGS as optimizer since we can load the whole data to train
-    optimizer = optim.LBFGS(seq.parameters(), lr=0.8)
+    optimizer = optim.LBFGS(seq.parameters(), lr=0.1)
     #begin to train
     for i in range(opt.steps):
         print('STEP: ', i)
         def closure():
             optimizer.zero_grad()
-            future = 700
+            future = 100
             out = seq(input[:, :(999-future)], future)
             loss = criterion(out, target)
             print('loss:', loss.item())
@@ -122,8 +121,8 @@ if __name__ == '__main__':
         optimizer.step(closure)
         # begin to predict, no need to track gradient here
         with torch.no_grad():
-            future = 990
-            pred = seq(test_input[:, :9], future)
+            future = 900
+            pred = seq(test_input[:, :(999-future)], future)
             loss = criterion(pred, test_target)
             print('test loss:', loss.item())
             y = pred.detach().numpy()
@@ -141,6 +140,6 @@ if __name__ == '__main__':
                 plt.plot(np.arange(800), unscaled_test_target[indices[i]][:800], colors[i], linewidth = 2.0)
             # plt.plot(np.arange(input.size(1)), y[i][:input.size(1)], color, linewidth = 2.0)
             # plt.plot(np.arange(input.size(1), input.size(1) + future), yi[input.size(1):], color + ':', linewidth = 2.0)
-        draw(y, [0, 100, 200], ['r', 'g', 'b'])
-        plt.savefig('predict%d.pdf'%i)
+        draw(y, [20, 60, 100], ['r', 'g', 'b'])
+        plt.savefig('LSTM/predict%d.png'%i)
         plt.close()

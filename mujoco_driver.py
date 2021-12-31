@@ -38,19 +38,21 @@ def generate_folders():
         except OSError as error:
             print("'%s' can not be created" % (datadir+'/'+filename.lower()))
     modeldir = './Models'
-    for noise in common_config['NOISE_CONFIGS']:
-        noisedir = f'Noise_{int(100*noise)}'
-        for filename in common_config['DATA_CONFIGS']:
-            path = os.path.join(modeldir, noisedir + '/' + filename.lower())
-            try:
-                os.makedirs(path, exist_ok = True)
-                print("Successfully created '%s'" % (modeldir + '/' + noisedir + '/' + filename.lower()))
-                for modelname in common_config['ALL_MODEL_CONFIGS']:
-                    modelpath = os.path.join(path, modelname.lower())
-                    os.makedirs(modelpath, exist_ok = True)
-                    print("Successfully created '%s'" % (path + '/' + modelname.lower()))
-            except OSError as error:
-                print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
+    for seed in common_config['SEEDS']:
+        seeddir = f'SEED_{seed}'
+        for noise in common_config['NOISE_CONFIGS']:
+            noisedir = f'Noise_{int(100*noise)}'
+            for filename in common_config['DATA_CONFIGS']:
+                path = os.path.join(modeldir, seeddir + '/' + noisedir + '/' + filename.lower())
+                try:
+                    os.makedirs(path, exist_ok = True)
+                    print("Successfully created '%s'" % (modeldir + '/' + seeddir + '/' + noisedir + '/' + filename.lower()))
+                    for modelname in common_config['ALL_MODEL_CONFIGS']:
+                        modelpath = os.path.join(path, modelname.lower())
+                        os.makedirs(modelpath, exist_ok = True)
+                        print("Successfully created '%s'" % (path + '/' + modelname.lower()))
+                except OSError as error:
+                    print("'%s' can not be created" % (modeldir + '/' + noisedir + '/' + filename.lower()))
     print('Successfully created all directories!')
 
 # generate_folders()
@@ -91,31 +93,33 @@ def generate_all_datasets():
 # generate_all_datasets()
         
 def train_all_models():
-    for noise in common_config['NOISE_CONFIGS']:
-        for active_data_config_name in common_config['DATA_CONFIGS']:
-            active_data_config = all_configs[active_data_config_name].copy()
-            active_data_config.update(common_config)
+    for seed in common_config['SEEDS']:
+        for noise in common_config['NOISE_CONFIGS']:
+            for active_data_config_name in common_config['DATA_CONFIGS']:
+                active_data_config = all_configs[active_data_config_name].copy()
+                active_data_config.update(common_config)
 
-            for active_model_config_name in common_config['MODEL_CONFIGS']:
-                if common_config['MODEL_CACHING'] and os.path.isfile(f'./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt'):
-                    print(f'======================= Skipping ./Models/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt =======================')
-                    continue
+                for active_model_config_name in common_config['MODEL_CONFIGS']:
+                    if common_config['MODEL_CACHING'] and os.path.isfile(f'./Models/SEED_{seed}/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt'):
+                        print(f'======================= Skipping ./Models/SEED_{seed}/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt =======================')
+                        continue
 
-                active_model_config = all_configs[active_model_config_name].copy()
-                active_model_config.update(active_data_config)
-                config = active_model_config
+                    active_model_config = all_configs[active_model_config_name].copy()
+                    active_model_config.update(active_data_config)
+                    config = active_model_config
 
-                config['datafile'] = config['TRAINFILE']
-                config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
-                config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
-                config['noise'] = noise
-                config['modeldir'] = 'Models/Noise_' + f'{int(100*noise)}/' + active_data_config_name.lower() + '/'
+                    config['datafile'] = config['TRAINFILE']
+                    config['vx_range'] = np.linspace(config['TRAIN_VX_START'], config['TRAIN_VX_END'], num = config['TRAIN_VX_VALUES'], dtype=np.float32)
+                    config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*config['TRAIN_ITERATIONS'], step = config['TIMESTEP'])
+                    config['noise'] = noise
+                    config['seed'] = seed
+                    config['modeldir'] = 'Models/' + f'SEED_{seed}/' + f'Noise_{int(100*noise)}/' + active_data_config_name.lower() + '/'
 
-                print(f'======================={active_data_config_name}, {active_model_config_name}, Noise {int(100*noise)}%=======================')
-                if config['take_differential_points']:
-                    pidnn_driver(config)
-                else:
-                    ff_driver(config)
+                    print(f'======================={active_data_config_name}, {active_model_config_name}, Noise {int(100*noise)}%=======================')
+                    if config['take_differential_points']:
+                        pidnn_driver(config)
+                    else:
+                        ff_driver(config)
 
 # train_all_models()
 
