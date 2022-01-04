@@ -125,33 +125,39 @@ def train_all_models():
 
 def test_all_models():
     dicts_testdata = []
-    for seed in common_config['SEEDS']:
-        for noise in common_config['NOISE_CONFIGS']:
-            for active_data_config_name in common_config['DATA_CONFIGS']:
-                active_data_config = all_configs[active_data_config_name].copy()
-                active_data_config.update(common_config)
+    for noise in common_config['NOISE_CONFIGS']:
+        for active_data_config_name in common_config['DATA_CONFIGS']:
+            active_data_config = all_configs[active_data_config_name].copy()
+            active_data_config.update(common_config)
 
-                for active_model_config_name in common_config['MODEL_CONFIGS']:
-                    active_model_config = all_configs[active_model_config_name].copy()
-                    active_model_config.update(active_data_config)
-                    config = active_model_config
+            for active_model_config_name in common_config['MODEL_CONFIGS']:
+                active_model_config = all_configs[active_model_config_name].copy()
+                active_model_config.update(active_data_config)
+                config = active_model_config
 
+                seed_results = []
+                for seed in common_config['SEEDS']:
                     model = torch.load(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + active_model_config_name.lower() + '.pt')
                     model.eval()
+                    seed_results.append(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
+                seed_results = np.array(seed_results)
 
-                    # dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
-                    result = (seed,\
-                        noise,
-                        active_data_config_name,
-                        active_model_config_name,
-                        testloader(config, config['datadir'] + config['TESTFILE'], model).item())
-                    print(result)
-                    dicts_testdata.append(result)
+                # dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
+                result = (noise,
+                    active_data_config_name,
+                    active_model_config_name,
+                    np.mean(seed_results),
+                    np.std(seed_results),
+                    np.max(seed_results),
+                    np.min(seed_results)
+                    )
+                print(result)
+                dicts_testdata.append(result)
             
     df_testdata = pd.DataFrame(dicts_testdata,\
-        columns=['SEED', 'NOISE', 'DATASET', 'MODEL', 'ERROR'])
+        columns=['NOISE', 'DATASET', 'MODEL', 'ERROR_AVG', 'ERROR_STD', 'ERR_MAX', 'ERR_MIN'])
     # df_testdata.to_csv(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
-    df_testdata.to_csv(f'inferences.csv')
+    df_testdata.to_csv(f'Inferences/inferences.csv')
 
 # test_all_models()
 
