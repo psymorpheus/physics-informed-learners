@@ -149,13 +149,14 @@ def test_all_models():
                     np.mean(seed_results),
                     np.std(seed_results),
                     np.max(seed_results),
-                    np.min(seed_results)
+                    np.min(seed_results),
+                    np.std(-np.log(seed_results))
                     )
                 print(result)
                 dicts_testdata.append(result)
             
     df_testdata = pd.DataFrame(dicts_testdata,\
-        columns=['NOISE', 'DATASET', 'MODEL', 'ERROR_AVG', 'ERROR_STD', 'ERR_MAX', 'ERR_MIN'])
+        columns=['NOISE', 'DATASET', 'MODEL', 'ERR_AVG', 'ERR_STD', 'ERR_MAX', 'ERR_MIN', 'LOG_STD'])
     # df_testdata.to_csv(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
     df_testdata.to_csv(f'Inferences/inferences.csv')
 
