@@ -124,30 +124,34 @@ def train_all_models():
 # train_all_models()
 
 def test_all_models():
-    for noise in common_config['NOISE_CONFIGS']:
-        dicts_testdata = []
+    dicts_testdata = []
+    for seed in common_config['SEEDS']:
+        for noise in common_config['NOISE_CONFIGS']:
+            for active_data_config_name in common_config['DATA_CONFIGS']:
+                active_data_config = all_configs[active_data_config_name].copy()
+                active_data_config.update(common_config)
 
-        for active_data_config_name in common_config['DATA_CONFIGS']:
-            active_data_config = all_configs[active_data_config_name].copy()
-            active_data_config.update(common_config)
+                for active_model_config_name in common_config['MODEL_CONFIGS']:
+                    active_model_config = all_configs[active_model_config_name].copy()
+                    active_model_config.update(active_data_config)
+                    config = active_model_config
 
-            dict_testdata = dict({})
+                    model = torch.load(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + active_model_config_name.lower() + '.pt')
+                    model.eval()
 
-            for active_model_config_name in common_config['MODEL_CONFIGS']:
-                active_model_config = all_configs[active_model_config_name].copy()
-                active_model_config.update(active_data_config)
-                config = active_model_config
-
-                model = torch.load('Models/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + active_model_config_name.lower() + '.pt')
-                model.eval()
-
-                dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
-           
-            dicts_testdata.append(dict_testdata)
-        
-        df_testdata = pd.DataFrame(dicts_testdata, index = common_config['DATA_CONFIGS'])
-        df_testdata.to_csv('Models/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
-        df_testdata.to_csv(f'inferences_testdata_noise_{int(100*noise)}.csv')
+                    # dict_testdata[active_model_config_name] = "{:.2e}".format(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
+                    result = (seed,\
+                        noise,
+                        active_data_config_name,
+                        active_model_config_name,
+                        testloader(config, config['datadir'] + config['TESTFILE'], model).item())
+                    print(result)
+                    dicts_testdata.append(result)
+            
+    df_testdata = pd.DataFrame(dicts_testdata,\
+        columns=['SEED', 'NOISE', 'DATASET', 'MODEL', 'ERROR'])
+    # df_testdata.to_csv(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/' + 'inferences_testdata.csv')
+    df_testdata.to_csv(f'inferences.csv')
 
 # test_all_models()
 

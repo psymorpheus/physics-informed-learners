@@ -20,7 +20,7 @@ COMMON:
 
   ALPHA: [0.01, 0.1, 1, 10, 100]
 
-  SEEDS: [2314, 4132]
+  SEEDS: [1234, 2314, 4132]
 
   SAVE_PLOT: True
   SAVE_MODEL: True
