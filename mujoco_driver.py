@@ -137,6 +137,7 @@ def test_all_models():
 
                 seed_results = []
                 for seed in common_config['SEEDS']:
+                    if not os.path.isfile(f'./Models/SEED_{seed}/Noise_{int(100*noise)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt'): seed = common_config['SEEDS'][0]
                     model = torch.load(f'Models/SEED_{seed}/Noise_' + f'{int(100*noise)}/{active_data_config_name.lower()}/' + active_model_config_name.lower() + '.pt')
                     model.eval()
                     seed_results.append(testloader(config, config['datadir'] + config['TESTFILE'], model).item())
