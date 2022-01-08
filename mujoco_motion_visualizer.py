@@ -20,14 +20,14 @@ with open("mujoco_config.yaml", "r") as f:
 
 # vx = float(input('Enter initial velocity: '))
 # tsteps = int(input('Enter number of timesteps: '))
-vx = 32
-tsteps = 1900
+vx = 15
+tsteps = 1000
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-active_data_config_name = 'WILDCARD_01'
+active_data_config_name = 'SIMULATION_00_40'
 active_model_config_name = 'FF_800'
-noise = 0.05
+noise = 0.10
 
 active_data_config = all_configs[active_data_config_name].copy()
 active_data_config.update(common_config)
@@ -36,7 +36,7 @@ active_model_config.update(active_data_config)
 config = active_model_config
 config['t_range'] = np.arange(start=0.0, stop = config['TIMESTEP']*tsteps, step = config['TIMESTEP'])
 
-model = torch.load(f'Models/Noise_{int(noise*100)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt')
+model = torch.load(f'Models/SEED_1234/Noise_{int(noise*100)}/{active_data_config_name.lower()}/{active_model_config_name.lower()}.pt')
 model.eval()
 device = 'cuda'
 model.to(device)
@@ -101,7 +101,8 @@ elif not config['toy_data']:
 
 		simulated_obj_pos = obs["observation"][3:6][0] - initial_obj_pos[0]
 		with torch.no_grad():
-			predicted_obj_pos = model.forward(np.array([[initial_obj_vel, iter * config['TIMESTEP']]])).item()
+			iov_cp = initial_obj_vel
+			predicted_obj_pos = model.forward(np.array([[iov_cp, iter * config['TIMESTEP']]])).item()
 		
 		history.append([iter * config['TIMESTEP'], simulated_obj_pos, predicted_obj_pos])
 		iter += 1
@@ -129,11 +130,14 @@ epochs = history[:, 0].ravel()
 simulated_positions = history[:, 1].ravel()
 predicted_positions = history[:, 2].ravel()
 plt.clf()
-plt.plot(epochs, simulated_positions, color = (63/255, 97/255, 143/255), label='Simulated Position')
-plt.plot(epochs, predicted_positions, color = (179/255, 89/255, 92/255), label='Predicted Position')
+plt.plot(epochs, simulated_positions, color = (63/255, 97/255, 143/255), label='Simulator Trajectory')
+plt.plot(epochs, predicted_positions, color = (179/255, 89/255, 92/255), label='NN Predicted Position')
 plt.title('Simulated and Predicted positions\n')
 plt.xlabel('Time')
 plt.ylabel('Displacement')
 plt.legend()
 # plt.show()
-plt.savefig('dummy.png')
+savename = 'dum_'
+savename += active_model_config_name.lower().replace('_','') + '_' + active_data_config_name.lower().replace('_','')
+savename += '_n' + str(int(100*noise)) + '.png'
+plt.savefig(savename)

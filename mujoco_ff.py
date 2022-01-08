@@ -45,7 +45,7 @@ class FF_Baseline(nn.Module):
 	
 	def forward(self,x):
 		if torch.is_tensor(x) != True:
-			x = torch.from_numpy(x)             
+			x = torch.from_numpy(x).to(self.device)         
 					  
 		# Preprocessing input - sclaed from 0 to 1
 		x = (x - self.l_b)/(self.u_b - self.l_b)
